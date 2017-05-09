@@ -21,7 +21,17 @@ for n = 1:num_images
     % Visualize imshow(reshape(images(:, 2),image_dims))
 end
 
-%% Training
+% Read labels
+load('load_labels.mat');
+
+%% Split the dataset into training set and testing set by 8:2 ratio
+[train_index, test_index] = split(labels,0.8);
+images_train = images(:,train_index);
+images_test = images(:,test_index);
+labels_train = labels(:,train_index);
+labels_test = labels(:,test_index);
+
+%% Use PCA to downsize the dimensions
 % Preprocessing: mean-shifte the images
 mean_face = mean(images, 2);
 shifted_images = images - repmat(mean_face, 1, num_images);
@@ -43,13 +53,11 @@ shifted_images = images - repmat(mean_face, 1, num_images);
 % the original space, and each column represents a component in the new
 % space
 num_eigens = 20;
-evectors = evectors(:,1:num_eigens);
+evectors = evectors(:,1:num_eigens); % n*p
  
 % Project the images into the subspace to generate the feature vectors
 % (n*p)' * (n*m) = p*m
 features = evectors' * shifted_images;
-
-
 
 % display the eigenvectors
 figure;
@@ -57,9 +65,16 @@ for n = 1:num_eigens
     subplot(5, ceil(num_eigens/5), n);
     imshow(reshape(evectors(:,n),image_dims),[]);
 end
+saveas(gcf,'visual_evectors.png');
+close
 
 % display the eigenvalues
-%normalised_evalues = evalues / sum(evalues);
-%figure, plot(cumsum(normalised_evalues));
-%xlabel('No. of eigenvectors'), ylabel('Variance accounted for');
-%xlim([1 30]), ylim([0 1]), grid on;
+normalised_evalues = evalues / sum(evalues);
+figure, plot(cumsum(normalised_evalues));
+xlabel('No. of eigenvectors'), ylabel('Variance accounted for');
+xlim([1 50]), ylim([0 1]), grid on;
+saveas(gcf,'visual_variance.png');
+close
+
+%% Training
+
