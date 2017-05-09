@@ -1,4 +1,7 @@
 %% This function convert all the raw images into gray color scale and cropped out the non-face part
+%% Data Source
+% Faces1999 from CalTech Vision Database
+
 % Enter the folder
 cd faces
 
