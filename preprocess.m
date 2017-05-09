@@ -26,9 +26,13 @@ for ii = 1:nfiles
     bomy = min(y); % Bottom Most
     upy = max(y); % Up Most
     cropped = imcrop(img_gray,[leftx,bomy,rightx,upy]); % Crop the image
+    
+    % Resize the image to the same size
+    resized = imresize(cropped,[320 260]);
+
     % Save the cropped image
-    crop_name = sprintf('cropped/cropped_%d.jpg',ii);
-    imwrite(cropped,crop_name);
+    processed_name = sprintf('cropped/cropped_%d.jpg',ii);
+    imwrite(resized,processed_name);
 end    
 %% Go back to the home directory
 cd ..
