@@ -9,6 +9,7 @@ import re
 import glob
 from operator import itemgetter 
 import random
+from random import shuffle
 
 def read_images(data_path,target_folders,label_1_folder,reduce_height = 24,reduce_width = 21):
     """
@@ -135,6 +136,7 @@ def plot_eigenfaces(pca_matrix,height, width):
         # Remove ticks from the plot.
         ax.set_xticks([])
         ax.set_yticks([])
+    plt.show()
 
 def mean_shift(components):
     """
@@ -189,14 +191,13 @@ def plot_compare_after_reconst(img_matrix_reconst,imgs_matrix,height,width):
 
     plt.show()
 
-def split_training(labels,ratio):
+def split_training(labels,ratio = 0.8):
     """
     This function Split the Data into the Training and Validation Set. 
     Its output is the indice of images to be assigned to the Training/Validation Set. 
     The input "labels" is a hvector
     The ratio is a number between [0,1] that represents the percentage of images to be assigned to the training set
     """
-    ratio = 0.8 # The percentage of images to be splitted into the training set
     m = len(labels)
     training_size = int(m*ratio)
     while 1:
@@ -207,6 +208,33 @@ def split_training(labels,ratio):
         if (sum(labels[train_ind]) > 0 and sum(labels[test_ind]) > 0):
             break
     return train_ind, test_ind
+
+def split_train_eval_test(labels,ratio_train = 0.8, ratio_eval = 0):
+    """
+    This function Split the Data into the Training, Evaluation, and Test Set,
+    and there will be no anomalous sample in the training set.
+    Its output is the indice of images to be assigned to the Training/Evaluation/Testing Set. 
+    The input "labels" is a hvector
+    The ratio is a number between [0,1] that represents the percentage of images to be assigned to the training/Evaluation set
+    """
+    m = len(labels) # Get the total number of labels
+    ind = np.hstack(range(m)) # Generate an array of indices
+    ind_anomal = ind[labels[:] == 1] # Get the indice of anomalous dataset
+    ind_normal = ind[labels[:] == 0] # Get the indice of normal dataset
+
+    shuffle(ind_normal) # Shuffle the Normal Dataset
+    training_size = int(m*ratio_train) # Get the size of the training set
+    eval_size = int(m*ratio_eval)
+    train_ind = ind_normal[:training_size-1] # Split the Training Set
+    nontraining_ind = np.concatenate((ind_normal[training_size:],ind_anomal),axis = 0) # Merge the remaining data
+    shuffle(nontraining_ind) # Shuffle the indice of the nontraining set to mix the normal and anomalous dataset
+    eval_ind = nontraining_ind[:eval_size-1] # Split the Evaluation Set
+    test_ind = nontraining_ind[eval_size:] # Split the Testing Set
+    
+    if ratio_eval> 0:
+        return train_ind, eval_ind, test_ind
+    else:
+        return train_ind, test_ind
 
 def estimate_gaussian(X):
     """
