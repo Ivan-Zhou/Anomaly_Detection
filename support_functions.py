@@ -209,7 +209,7 @@ def split_training(labels,ratio = 0.8):
             break
     return train_ind, test_ind
 
-def split_train_eval_test(labels,ratio_train = 0.8, ratio_eval = 0):
+def split_train_eval_test(labels,ratio_train = 0.8, ratio_val = 0):
     """
     This function Split the Data into the Training, Evaluation, and Test Set,
     and there will be no anomalous sample in the training set.
@@ -224,18 +224,18 @@ def split_train_eval_test(labels,ratio_train = 0.8, ratio_eval = 0):
 
     shuffle(ind_normal) # Shuffle the Normal Dataset
     training_size = int(m*ratio_train) # Get the size of the training set
-    eval_size = int(m*ratio_eval)
-    train_ind = ind_normal[:training_size-1] # Split the Training Set
+    val_size = int(m*ratio_val) # Get the size of the Validation Set
+    train_ind = ind_normal[:training_size] # Split the Training Set; note: training set size can be 0
     nontraining_ind = np.concatenate((ind_normal[training_size:],ind_anomal),axis = 0) # Merge the remaining data
     shuffle(nontraining_ind) # Shuffle the indice of the nontraining set to mix the normal and anomalous dataset
-    eval_ind = nontraining_ind[:eval_size-1] # Split the Evaluation Set
-    test_ind = nontraining_ind[eval_size:] # Split the Testing Set
+    val_ind = nontraining_ind[:val_size] # Split the Evaluation Set
+    test_ind = nontraining_ind[val_size:] # Split the Testing Set
     
-    if ratio_eval> 0:
-        return train_ind, eval_ind, test_ind
+    if ratio_val> 0:
+        return train_ind, val_ind, test_ind
     else:
         return train_ind, test_ind
-
+        
 def estimate_gaussian(X):
     """
     Compute the parameters of the Gaussian Distribution
