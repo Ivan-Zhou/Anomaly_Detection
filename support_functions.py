@@ -383,3 +383,38 @@ def select_threshold_distance(edistance, yval):
             best_fpr = fpr
             best_fnr = fnr
     return best_epsilon,best_tpr,best_tnr,best_fpr,best_fnr,best_f1
+
+
+def convert_pred(pred,label_Anomaly,label_Normal):
+    """
+    This function converts the labels in pred into 0 and 1, where 0 indicates Normal, and 1 indicates Anomaly.
+    Goal: Convert the data format before comparing to the Labels set for evaluation.
+    label_Anomaly: the label used in the input pred set to indicate Anomaly
+    label_Normal: the label used in the input pred set to indicate Normal
+    """
+    pred_output = pred # Copy the Dataset
+    pred_output[pred == label_Normal] = 0  # Label the Normality with 0
+    pred_output[pred == label_Anomaly] = 1 # Label the Anomalies as 1
+    return pred_output
+
+
+def evaluate_pred(Preds, Labels):
+    """
+    This function evaluate the Prediction with Labels. 
+    Standard Format: Positive (Anomaly) is labeled with 1, and Negative (Normal) is labeled with 0
+    """
+    # Get the indices of the Positive and Negative Predictions
+    ind_P = (Preds == 1)
+    ind_N = (Preds == 0)
+    # Evaluation
+    TP = sum(((Preds[ind_P]) == 1) == ((Labels[ind_P]) == 1)) # True Positive
+    TN = sum(((Preds[ind_N]) == 0) == ((Labels[ind_N]) == 0)) # True Negative
+    FP = sum(((Preds[ind_P]) == 1) == ((Labels[ind_P]) == 0)) # False Positive
+    FN = sum(((Preds[ind_N]) == 0) == ((Labels[ind_N]) == 1)) # False Negative
+    TP, TN, FP, FN
+    # Compute the Precision and Recall
+    Recall = TP/max(1,TP+FN)
+    Precision = TP/max(1,TP+FP)
+    F = (2*Precision*Recall) / max(1,Precision+Recall)
+    
+    return Recall, Precision, F
