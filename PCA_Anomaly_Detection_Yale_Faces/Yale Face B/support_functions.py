@@ -191,6 +191,16 @@ def plot_compare_after_reconst(img_matrix_reconst,imgs_matrix,height,width):
 
     plt.show()
 
+def perm_and_split(m,ratio = 0.8):
+    """
+    This function generates random indices and split into two groups
+    """
+    ind = np.random.permutation(m) # Permutate to generate random indice within m
+    size1 = int(m*ratio)
+    group1 = ind[:size1-1]
+    group2 = ind[size1:]
+    return group1, group2
+
 def split_training(labels,ratio = 0.8):
     """
     This function Split the Data into the Training and Validation Set. 

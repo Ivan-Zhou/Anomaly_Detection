@@ -24,7 +24,8 @@ decoder_layer = autoencoder.layers[-1]
 # create the decoder model
 decoder = Model(encoded_input, decoder_layer(encoded_input))
 
-autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
+autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
+# autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
 
 from keras.datasets import mnist
 import numpy as np
