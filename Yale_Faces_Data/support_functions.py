@@ -400,6 +400,8 @@ def select_threshold_distance(edistance, yval,to_print = False):
         print("True Negative Rate: {0:.1f}%".format(best_tnr * 100))
         print("False Positive Rate: {0:.1f}%".format(best_fpr * 100))
         print("False Negative Rate: {0:.1f}%".format(best_fnr * 100))
+        # print("Precision: {0:.1f}%".format(Precision * 100))
+        # print("Recall: {0:.1f}%".format(Recall * 100))
         print("F-score: {0:.1f}%".format(best_f1 * 100))
     return best_epsilon,best_tpr,best_tnr,best_fpr,best_fnr,best_f1
 
@@ -504,7 +506,7 @@ def plot_scatter_with_labels(dist,labels):
     This function generates a scatter plot with labels to evaluate the detector
     '''
     # Sort the Images and Labels based on the Probability
-    rank = np.argsort(dist) # Sort from the Smallest to the Largest
+    rank = np.argsort(-dist) # Sort from the Smallest to the Largest
 
     gaps_ranked = dist[rank]
     labels_ranked = labels[rank]
