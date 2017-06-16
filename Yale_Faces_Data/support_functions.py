@@ -367,11 +367,12 @@ def find_euclidean_distance(matrix1,matrix2):
     dist = np.linalg.norm(matrix1 - matrix2,axis = 0) # By specifying axis = 0, we find the distance between columns
     return dist
 
-def select_threshold_distance(edistance, yval):  
+def select_threshold_distance(edistance, yval,to_print = False):  
     """
     This function finds the best threshold value to detect the anomaly given the PDF values and True label Values
     edistance: euclidean distance 
     yval: True label value
+    to_print: indicate if the result need to be printed
     """
     best_epsilon = 0
     best_f1 = 0
@@ -394,6 +395,12 @@ def select_threshold_distance(edistance, yval):
             best_tnr = tnr
             best_fpr = fpr
             best_fnr = fnr
+    if to_print:
+        print("True Positive Rate: {0:.1f}%".format(best_tpr * 100))
+        print("True Negative Rate: {0:.1f}%".format(best_tnr * 100))
+        print("False Positive Rate: {0:.1f}%".format(best_fpr * 100))
+        print("False Negative Rate: {0:.1f}%".format(best_fnr * 100))
+        print("F-score: {0:.1f}%".format(best_f1 * 100))
     return best_epsilon,best_tpr,best_tnr,best_fpr,best_fnr,best_f1
 
 
@@ -430,6 +437,29 @@ def evaluate_pred(Preds, Labels):
     F = (2*Precision*Recall) / max(1,Precision+Recall)
     
     return Recall, Precision, F
+
+def eval_with_test(Preds, Labels, k = 10):
+    # Find Recall, Precision, F score
+    Recall, Precision, F = evaluate_pred(Preds, Labels)
+    # Find Precision k
+    PrecK = find_prec_k(Preds, Labels,k)
+    print("Precision: {0:.1f}%".format(Precision * 100))
+    print("Recall: {0:.1f}%".format(Recall * 100))
+    print("F-score: {0:.1f}%".format(F * 100))
+    print("Precision@" + str(k) +": {0:.1f}%".format(PrecK * 100))
+
+def find_prec_k(Preds, Labels,k):
+    """
+    Compute the Precision at K
+    """
+    PredsK = Preds[0:k] # Prediction at k
+    LabelsK = Labels[0:k] # Labels at k
+    ind_PK = (PredsK == 1) # Indices of Positive at K
+    ind_NK = (PredsK == 0) # Indices of Negative at K
+    TPK = np.sum((PredsK[ind_PK] == 1) == (LabelsK[ind_PK] == 1)) # True Positive at K
+    FPK = np.sum((PredsK[ind_PK] == 1) == (LabelsK[ind_PK] == 0)) # False Positive at K
+    PrecK = TPK/max(1,TPK + FPK) # Precision at K
+    return PrecK
 
 def get_data(label_1_folder,target_folders,data_path, reduce_height = 24, reduce_width = 21):
     """
@@ -469,6 +499,28 @@ def get_data(label_1_folder,target_folders,data_path, reduce_height = 24, reduce
     
     return imgs_matrix, labels_vector, height, width
 
+def plot_scatter_with_labels(dist,labels):
+    '''
+    This function generates a scatter plot with labels to evaluate the detector
+    '''
+    # Sort the Images and Labels based on the Probability
+    rank = np.argsort(dist) # Sort from the Smallest to the Largest
+
+    gaps_ranked = dist[rank]
+    labels_ranked = labels[rank]
+
+
+    length = labels_ranked.shape[0]
+    counts = list(range(1,length+1))
+    colors = labels_ranked == 0
+
+    plt.figure(figsize=(15,8))
+    plt.suptitle('Scatter Plot of the Construction Error',fontsize = 20)
+    plt.xlabel('Ranking (ascending)',fontsize = 18)
+    plt.ylabel('Reconstruction Error',fontsize = 18)
+    plt.scatter(counts,gaps_ranked,c = colors,cmap=plt.cm.copper) 
+    plt.ylim(min(gaps_ranked), max(gaps_ranked))
+    plt.show()
 
 def compile_autoencoder(data, data_length, n_components=32):
     '''
