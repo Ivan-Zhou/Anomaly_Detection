@@ -21,35 +21,15 @@ label_1_folder = [9,21]
 target_folders = range(1,22)
 data_path = "CroppedYale/"
 
-# We also need to reduce the size of the image for the convenience of computation
-reduce_height = 24
-reduce_width = 21
-
-# Read the images and reduce the size
-images,labels = read_images(data_path,target_folders,label_1_folder,reduce_height,reduce_width)
-
-# To evaluate the threshold of the dark pixels
-# dark_pixel_curve(images)
-
-imgs = images[:] # Create a copy
-# Eliminate the images and labels whose number of dark pixels are above the threshold
-# The threshold is determined based on the dark_pixel_curve() function above
-imgs,labels,remove_count = remove_dark_img(imgs,labels,180) 
-
-# Visualization of images and labels
-# plot_images(imgs,labels)
-
-# Randomly select and show anomalous images
-# show_anomaly_images(imgs,labels)
-
+# Read image matrix (n*m), labels (vector of m), and image size
+imgs, labels, height, width = get_data(label_1_folder,target_folders,data_path)
+# The length of one image vector
+img_size = height*width 
+num_imgs = len(imgs)
 
 # Apply Deep Autoencoder
 # Define the number of Principal Components to keep from the image
 n_components  = 64
-# Find the dimension of one image
-height, width = imgs[0].shape
-img_size = height*width # The length of one image vector
-num_imgs = len(imgs)
 
 # this is the size of our encoded representations
 encoding_dim = n_components  # 32 floats -> compression of factor 24.5, assuming the input is 784 floats
@@ -83,26 +63,16 @@ encoder = Model(input_img, encoded)
 autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
 
 # Prepare the input
-# Initialize the matrix to store the entire image list
-imgs_matrix = np.zeros((img_size,num_imgs)) 
-# Iterate through each image, convert it into an array, and add to the imgs_matrix as a column
-for i in range(0,len(imgs)):
-    imgs_matrix[:,i] = imgs[i].reshape(img_size)
-# Vectorize the labels list
-labels_vector = np.hstack(labels) # Easier to get multiple items from a vector than from a list
 # Select only the Normal Image Dataset
-imgs_matrix_normal = imgs_matrix[:,labels_vector == 0]
+imgs_normal = imgs[:,labels == 0]
 # Split the images and labels
 # By default: 80% in training and 20% in testing
-train_ind, test_ind = perm_and_split(len(imgs_matrix_normal))
-x_all = np.transpose(imgs_matrix_normal)
+train_ind, test_ind = perm_and_split(len(imgs_normal))
+x_all = np.transpose(imgs_normal)
 x_train = x_all[train_ind,:]
 x_test = x_all[test_ind,:]
 
-print(x_all.shape)
-print(x_train.shape)
-print(x_test.shape)
-
+# Resize and reshape
 x_train = x_train.astype('float32') / 255.
 x_test = x_test.astype('float32') / 255.
 x_train = x_train.reshape((len(x_train), np.prod(x_train.shape[1:])))
@@ -112,6 +82,7 @@ x_test = x_test.reshape((len(x_test), np.prod(x_test.shape[1:])))
 x_train = np.tile(x_train, (200,1))
 x_test = np.tile(x_test, (200,1))
 
+# Run the model
 autoencoder.fit(x_train, x_train,
                 epochs=60,
                 batch_size=256,
@@ -121,8 +92,6 @@ autoencoder.fit(x_train, x_train,
 encoded_imgs = encoder.predict(x_test)
 # decoded_imgs = decoder.predict(encoded_imgs)
 decoded_imgs = autoencoder.predict(x_test)
-
-import matplotlib.pyplot as plt
 
 n = 10  # how many digits we will display
 plt.figure(figsize=(20, 4))
@@ -149,5 +118,6 @@ for i in range(n):
     ax.get_yaxis().set_visible(False)
 plt.show()
 
+# Save the model
 autoencoder.save('model_autoencoder.h5')
 encoder.save('model_encoder.h5')

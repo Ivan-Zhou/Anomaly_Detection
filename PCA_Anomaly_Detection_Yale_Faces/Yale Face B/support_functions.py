@@ -428,3 +428,41 @@ def evaluate_pred(Preds, Labels):
     F = (2*Precision*Recall) / max(1,Precision+Recall)
     
     return Recall, Precision, F
+
+def get_data(label_1_folder,target_folders,data_path, reduce_height = 24, reduce_width = 21):
+    """
+    Automate the process to read and process the data
+    """
+    # Read the images and reduce the size
+    # We also need to reduce the size of the image for the convenience of computation
+    images,labels = read_images(data_path,target_folders,label_1_folder,reduce_height,reduce_width)
+
+    # To evaluate the threshold of the dark pixels
+    # dark_pixel_curve(images)
+
+    imgs = images[:] # Create a copy
+    # Eliminate the images and labels whose number of dark pixels are above the threshold
+    # The threshold is determined based on the dark_pixel_curve() function above
+    imgs,labels,remove_count = remove_dark_img(imgs,labels,180) 
+
+    # Visualization of images and labels
+    # plot_images(imgs,labels)
+
+    # Randomly select and show anomalous images
+    # show_anomaly_images(imgs,labels)
+    
+    # Convert the image dataset to a matrix
+    num_imgs = len(imgs)
+    # Find the dimension of one image
+    height, width = imgs[0].shape
+    img_size = height*width # The length of one image vector
+    
+    # Initialize the matrix to store the entire image list
+    imgs_matrix = np.zeros((img_size,num_imgs)) 
+    # Iterate through each image, convert it into an array, and add to the imgs_matrix as a column
+    for i in range(0,len(imgs)):
+        imgs_matrix[:,i] = imgs[i].reshape(img_size)
+    # Vectorize the labels list
+    labels_vector = np.hstack(labels) # Easier to get multiple items from a vector than from a list
+    
+    return imgs_matrix, labels_vector, height, width
