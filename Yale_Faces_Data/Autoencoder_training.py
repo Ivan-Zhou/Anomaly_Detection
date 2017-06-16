@@ -25,42 +25,10 @@ data_path = "CroppedYale/"
 imgs, labels, height, width = get_data(label_1_folder,target_folders,data_path)
 # The length of one image vector
 img_size = height*width 
-num_imgs = len(imgs)
+# num_imgs = len(imgs)
 
-# Apply Deep Autoencoder
-# Define the number of Principal Components to keep from the image
-n_components  = 64
-
-# this is the size of our encoded representations
-encoding_dim = n_components  # 32 floats -> compression of factor 24.5, assuming the input is 784 floats
-
-# this is our input placeholder
-input_img = Input(shape=(img_size,))
-
-# "encoded" is the encoded representation of the input
-encoded = Dense(128, activation='relu')(input_img) 
-encoded = Dense(64, activation='relu')(encoded) 
-encoded = Dense(encoding_dim, activation='relu')(encoded)
-
-# "decoded" is the lossy reconstruction of the input
-decoded = Dense(64, activation='relu')(encoded)
-decoded = Dense(128, activation='relu')(decoded) 
-decoded = Dense(img_size, activation='sigmoid')(decoded)
-
-# this model maps an input to its reconstruction
-autoencoder = Model(input_img, decoded)
-
-# this model maps an input to its encoded representation
-encoder = Model(input_img, encoded)
-
-# create a placeholder for an encoded (32-dimensional) input h
-#encoded_input = Input(shape=(encoding_dim,))
-# retrieve the last layer of the autoencoder model (one layer before the final reconstruction)
-#decoder_layer = autoencoder.layers[-3]
-# create the decoder model that maps an encoded input to its reconstruction
-#decoder = Model(encoded_input, decoder_layer(encoded_input))
-
-autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
+# Generate and Compile a Deep Autoencoder
+autoencoder = compile_autoencoder(imgs, img_size)
 
 # Prepare the input
 # Select only the Normal Image Dataset
@@ -89,8 +57,7 @@ autoencoder.fit(x_train, x_train,
                 shuffle=True,
                 validation_data=(x_test, x_test)) # x_train images are both the target and input
 
-encoded_imgs = encoder.predict(x_test)
-# decoded_imgs = decoder.predict(encoded_imgs)
+# encoded_imgs = encoder.predict(x_test)
 decoded_imgs = autoencoder.predict(x_test)
 
 n = 10  # how many digits we will display
@@ -120,4 +87,4 @@ plt.show()
 
 # Save the model
 autoencoder.save('model_autoencoder.h5')
-encoder.save('model_encoder.h5')
+# encoder.save('model_encoder.h5')
