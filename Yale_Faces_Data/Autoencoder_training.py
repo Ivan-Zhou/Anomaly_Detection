@@ -28,6 +28,7 @@ img_size = height*width
 # num_imgs = len(imgs)
 
 # Generate and Compile a Deep Autoencoder
+# autoencoder, encoder = compile_autoencoder(imgs, img_size)
 autoencoder = compile_autoencoder(imgs, img_size)
 
 # Prepare the input

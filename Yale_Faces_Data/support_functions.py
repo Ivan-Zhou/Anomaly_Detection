@@ -518,9 +518,8 @@ def compile_autoencoder(data, data_length, n_components=32):
 
     # this model maps an input to its reconstruction
     autoencoder = Model(inputs, decoded)
-
     # this model maps an input to its encoded representation
-    encoder = Model(inputs, encoded)
+    # encoder = Model(inputs, encoded)
 
     # create a placeholder for an encoded (32-dimensional) input h
     #encoded_input = Input(shape=(encoding_dim,))
@@ -531,4 +530,5 @@ def compile_autoencoder(data, data_length, n_components=32):
 
     autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
     
+    # return autoencoder, encoder
     return autoencoder
