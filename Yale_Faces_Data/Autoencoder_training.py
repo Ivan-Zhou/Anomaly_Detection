@@ -40,15 +40,15 @@ x_all = np.transpose(imgs_normal)
 x_train = x_all[train_ind,:]
 x_test = x_all[test_ind,:]
 
-# Resize and reshape
+# Normalize the Data
 x_train = x_train.astype('float32') / 255.
 x_test = x_test.astype('float32') / 255.
-x_train = x_train.reshape((len(x_train), np.prod(x_train.shape[1:])))
-x_test = x_test.reshape((len(x_test), np.prod(x_test.shape[1:])))
+# x_train = x_train.reshape((len(x_train), np.prod(x_train.shape[1:])))
+# x_test = x_test.reshape((len(x_test), np.prod(x_test.shape[1:])))
 
 # Replicate in order to expand the size of the dataset 
-x_train = np.tile(x_train, (200,1))
-x_test = np.tile(x_test, (200,1))
+x_train = np.tile(x_train, (300,1))
+x_test = np.tile(x_test, (300,1))
 
 # Run the model
 autoencoder.fit(x_train, x_train,
@@ -69,13 +69,6 @@ for i in range(n):
     plt.gray()
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
-
-    # display the encoded image
-    # ax = plt.subplot(3, n, i + 1 + 2*n)
-    # plt.imshow(encoded_imgs[i].reshape(height, width))
-    # plt.gray()
-    # ax.get_xaxis().set_visible(False)
-    # ax.get_yaxis().set_visible(False)
 
     # display reconstruction
     ax = plt.subplot(2, n, i + 1 + n)

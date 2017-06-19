@@ -267,44 +267,7 @@ def fit_multivariate_gaussian(data):
     dist = multivariate_normal(mean = mu, cov = cov)
     return dist
 
-def select_threshold(pval, yval, p_anomaly_switch = 0):  
-    """
-    This function finds the best threshold value to detect the anomaly given the PDF values and True label Values
-    pval: Probability based on the Multivariate Gaussian Distribution
-    yval: True label value
-    p_anomaly_switch: 1 if the given pval is the probability of being an anomaly, otherwise that is the probability
-    of not being an anmaly. By default it is 0
-    """
-    best_epsilon = 0
-    best_f1 = 0
-    best_tp = 0
-    best_fp = 0
-    best_fn = 0
-
-    step = (pval.max() - pval.min()) / 1000
-
-    for epsilon in np.arange(pval.min(), pval.max(), step):
-        # If the given p is the probability of being an anomaly, we need to find the threshold so that
-        # if p > threshold, it will be an anomaly
-        # IF the given p is hte probability of not being an anomaly, we need to find the threshold so that 
-        # if p < threshold, it will be an anomaly
-        if p_anomaly_switch == 1:
-            preds = pval > epsilon
-        else:
-            preds = pval < epsilon
-
-        tp,tn,fp,fn,f1 = eval_prediction(preds,yval)
-
-        if f1 > best_f1:
-            best_f1 = f1
-            best_epsilon = epsilon
-            best_tp = tp
-            best_fp = fp
-            best_fn = fn
-    #return best_epsilon, best_f1, best_tp, best_fp, best_fn
-    return best_epsilon
-
-def eval_prediction(pred,yval,rate = False):
+def eval_prediction(pred,yval,k, rate = False):
     """
     Function to evaluate the correctness of the predictions with multiple metrics
     If rate = True, we will return all the metrics in rate (%) format (except f1)
@@ -317,6 +280,7 @@ def eval_prediction(pred,yval,rate = False):
     precision = true_positive / max(1,true_positive + false_positive)
     recall = true_positive / max(1,true_positive + false_negative)
     f1 = (2 * precision * recall) / max(1,precision + recall)
+    PrecK = find_prec_k(pred, yval,k)
     # A more direct version of f1 is f1 = 2*tp/(2*tp+fn+fp)
     
     if rate:
@@ -326,9 +290,9 @@ def eval_prediction(pred,yval,rate = False):
         tnr = true_negative/n_n
         fpr = false_positive/n_n
         fnr = false_negative/n_p
-        return tpr,tnr,fpr,fnr,f1
+        return tpr,tnr,fpr,fnr,f1,PrecK
     else:
-        return true_positive,true_negative,false_positive,false_negative,f1
+        return true_positive,true_negative,false_positive,false_negative,f1,PrecK
     
 def compute_pca_matrix(data, n_components,height, width):
     """
@@ -367,44 +331,47 @@ def find_euclidean_distance(matrix1,matrix2):
     dist = np.linalg.norm(matrix1 - matrix2,axis = 0) # By specifying axis = 0, we find the distance between columns
     return dist
 
-def select_threshold_distance(edistance, yval,to_print = False):  
+def select_threshold_distance(edistance, yval,k=10, to_print = False):  
     """
     This function finds the best threshold value to detect the anomaly given the PDF values and True label Values
     edistance: euclidean distance 
     yval: True label value
+    k: the k used to compute the precision at k in the testing set
     to_print: indicate if the result need to be printed
     """
+    # Initialize the Metrics: only the selected will be used in optimization
     best_epsilon = 0
     best_f1 = 0
-    best_tpr = 0
-    best_tnr = 0
-    best_fpr = 0
-    best_fnr = 0
+    # best_tp = 0
+    # best_fp = 0
+    # best_fn = 0
+    # best_precK = 0 # Precision at k
 
-    step = (edistance.max() - edistance.min()) / 1000
+    # Sort the edistance and yval based on pval from high to low (in order to measure the Precision at K)
+    rank = np.argsort(-edistance) # Sort from the Largest to the Smallest
+    # If we want a rank from the smallest to the largest, we need to change the label here
+    dist_ranked = edistance[rank] # Sort the edistance
+    yval_ranked = yval[rank] # Sort the yval with the same order
 
-    for epsilon in np.arange(edistance.min(), edistance.max(), step):
-        preds = edistance > epsilon
-        
-        tpr,tnr,fpr,fnr,f1 = eval_prediction(preds,yval,rate = True)
+    # Step Size
+    step = (dist_ranked.max() - dist_ranked.min()) / 1000
 
+    for epsilon in np.arange(dist_ranked.min(), dist_ranked.max(), step):
+        preds_ranked = dist_ranked > epsilon # If the pval is larger than the threshold, it will be identified as an anomaly
+
+        tp,tn,fp,fn,f1,precK = eval_prediction(preds_ranked,yval_ranked,k,rate = True)
+
+        # Optimize to find the highest precision at k
         if f1 > best_f1:
-            best_f1 = f1
-            best_epsilon = epsilon
-            best_tpr = tpr
-            best_tnr = tnr
-            best_fpr = fpr
-            best_fnr = fnr
-    if to_print:
-        print("True Positive Rate: {0:.1f}%".format(best_tpr * 100))
-        print("True Negative Rate: {0:.1f}%".format(best_tnr * 100))
-        print("False Positive Rate: {0:.1f}%".format(best_fpr * 100))
-        print("False Negative Rate: {0:.1f}%".format(best_fnr * 100))
-        # print("Precision: {0:.1f}%".format(Precision * 100))
-        # print("Recall: {0:.1f}%".format(Recall * 100))
-        print("F-score: {0:.1f}%".format(best_f1 * 100))
-    return best_epsilon,best_tpr,best_tnr,best_fpr,best_fnr,best_f1
+            best_epsilon = epsilon # Record the current epsilon
+            best_f1 = f1 # Record the current target measurement: f1
 
+    # Get the best measurement with the best threshold
+    if to_print: # Print out the result
+        best_preds = dist_ranked > best_epsilon # If the pval is larger than the threshold, it will be identified as an anomaly
+        eval_with_test(best_preds, yval_ranked, k) # Pritn out the result
+
+    return best_epsilon
 
 def convert_pred(pred,label_Anomaly,label_Normal):
     """
