@@ -264,7 +264,7 @@ def fit_multivariate_gaussian(data):
     This data is given as a m*k matrix, where m represents the number of samples, and k represents the number of dimensions
     """
     mu, cov = estimate_gaussian(data)
-    dist = multivariate_normal(mean = mu, cov = cov)
+    dist = multivariate_normal(mean = mu, cov = cov,allow_singular=True)
     return dist
 
 def eval_prediction(pred,yval,k, rate = False):
