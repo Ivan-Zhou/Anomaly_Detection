@@ -491,6 +491,21 @@ def plot_scatter_with_labels(dist,labels):
     plt.ylim(min(gaps_ranked), max(gaps_ranked))
     plt.show()
 
+def plot_matrix_data(matrix):
+    """
+    This function plots the distribution of data within a matrix for the purpose of observation
+    """
+    vector = matrix.flatten() # Convert to a Vector
+    rank = np.argsort(vector) # Sort from the Smallest to the Largest
+    vector_ranked = vector[rank]
+    plt.figure(figsize=(15,8))
+    plt.plot(vector_ranked)
+    plt.title('The Distribution of Data within the Matrix',fontsize = 20)
+    plt.xlabel('Ranking',fontsize = 18)
+    plt.ylabel('Data Point Value',fontsize = 18)
+    plt.show()
+
+    
 def compile_autoencoder(data, data_length, n_components=32):
     '''
     Function to construct and compile the deep autoencoder, then return the model
