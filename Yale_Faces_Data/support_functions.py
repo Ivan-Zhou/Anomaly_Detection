@@ -548,7 +548,7 @@ def plot_matrix_data(matrix):
     plt.show()
 
     
-def compile_autoencoder(data, data_length, n_components=10):
+def compile_autoencoder(data, data_length, n_components=5):
     '''
     Function to construct and compile the deep autoencoder, then return the model
     Input:

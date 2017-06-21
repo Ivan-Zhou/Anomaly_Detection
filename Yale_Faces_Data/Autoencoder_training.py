@@ -18,7 +18,7 @@ from keras.models import Model
 # Import Dataset
 # Define the images to be read and the corresponding labels
 label_1_folder = [9,21]
-target_folders = range(1,35)
+target_folders = range(1,35) # 35
 data_path = "CroppedYale/"
 
 # Read image matrix (n*m), labels (vector of m), and image size
