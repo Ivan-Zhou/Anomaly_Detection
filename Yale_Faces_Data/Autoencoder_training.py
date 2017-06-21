@@ -18,7 +18,7 @@ from keras.models import Model
 # Import Dataset
 # Define the images to be read and the corresponding labels
 label_1_folder = [9,21]
-target_folders = range(1,22)
+target_folders = range(1,35)
 data_path = "CroppedYale/"
 
 # Read image matrix (n*m), labels (vector of m), and image size
@@ -28,8 +28,8 @@ img_size = height*width
 # num_imgs = len(imgs)
 
 # Generate and Compile a Deep Autoencoder
-# autoencoder, encoder = compile_autoencoder(imgs, img_size)
-autoencoder = compile_autoencoder(imgs, img_size)
+autoencoder, encoder = compile_autoencoder(imgs, img_size)
+# autoencoder = compile_autoencoder(imgs, img_size)
 
 # Prepare the input
 # Select only the Normal Image Dataset
@@ -53,7 +53,7 @@ x_test = np.tile(x_test, (300,1))
 
 # Run the model
 autoencoder.fit(x_train, x_train,
-                epochs=60,
+                epochs=80,
                 batch_size=256,
                 shuffle=True,
                 validation_data=(x_test, x_test)) # x_train images are both the target and input

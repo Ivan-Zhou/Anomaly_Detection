@@ -264,7 +264,7 @@ def fit_multivariate_gaussian(data):
     This data is given as a m*k matrix, where m represents the number of samples, and k represents the number of dimensions
     """
     mu, cov = estimate_gaussian(data)
-    dist = multivariate_normal(mean = mu, cov = cov,allow_singular=True)
+    dist = multivariate_normal(mean = mu, cov = cov,allow_singular=False)
     return dist
 
 def eval_prediction(pred,yval,k, rate = False):
@@ -333,7 +333,7 @@ def find_euclidean_distance(matrix1,matrix2):
 
 def select_threshold_distance(edistance, yval,k=10, to_print = False):  
     """
-    This function finds the best threshold value to detect the anomaly given the PDF values and True label Values
+    This function finds the best threshold value to detect the anomaly given the euclidean distance and True label Values
     edistance: euclidean distance 
     yval: True label value
     k: the k used to compute the precision at k in the testing set
@@ -357,7 +357,7 @@ def select_threshold_distance(edistance, yval,k=10, to_print = False):
     step = (dist_ranked.max() - dist_ranked.min()) / 1000
 
     for epsilon in np.arange(dist_ranked.min(), dist_ranked.max(), step):
-        preds_ranked = dist_ranked > epsilon # If the pval is larger than the threshold, it will be identified as an anomaly
+        preds_ranked = dist_ranked > epsilon # If the distance is larger than the threshold, it will be identified as an anomaly
 
         tp,tn,fp,fn,f1,precK = eval_prediction(preds_ranked,yval_ranked,k,rate = True)
 
@@ -369,7 +369,49 @@ def select_threshold_distance(edistance, yval,k=10, to_print = False):
     # Get the best measurement with the best threshold
     if to_print: # Print out the result
         best_preds = dist_ranked > best_epsilon # If the pval is larger than the threshold, it will be identified as an anomaly
-        eval_with_test(best_preds, yval_ranked, k) # Pritn out the result
+        eval_with_test(best_preds, yval_ranked, k) # Print out the result
+
+    return best_epsilon
+
+def select_threshold_probability(p, yval,k=10, to_print = False):  
+    """
+    This function finds the best threshold value to detect the anomaly given the PDF values and True label Values
+    p: probability given by the Multivariate Gaussian Model
+    yval: True label value
+    k: the k used to compute the precision at k in the testing set
+    to_print: indicate if the result need to be printed
+    """
+    # Initialize the Metrics: only the selected will be used in optimization
+    best_epsilon = 0
+    best_f1 = 0
+    # best_tp = 0
+    # best_fp = 0
+    # best_fn = 0
+    # best_precK = 0 # Precision at k
+
+    # Sort the edistance and yval based on pval from high to low (in order to measure the Precision at K)
+    rank = np.argsort(p) # Sort from the smallest to the largest
+    # If we want a rank from the smallest to the largest, we need to change the label here
+    p_ranked = p[rank] # Sort the Probability
+    yval_ranked = yval[rank] # Sort the yval with the same order
+
+    # Step Size
+    step = (p_ranked.max() - p_ranked.min()) / 1000
+
+    for epsilon in np.arange(p_ranked.min(), p_ranked.max(), step):
+        preds_ranked = p_ranked < epsilon # If the probability is smaller than the threshold, it will be identified as an anomaly
+
+        tp,tn,fp,fn,f1,precK = eval_prediction(preds_ranked,yval_ranked,k,rate = True)
+
+        # Optimize to find the highest precision at k
+        if f1 > best_f1:
+            best_epsilon = epsilon # Record the current epsilon
+            best_f1 = f1 # Record the current target measurement: f1
+
+    # Get the best measurement with the best threshold
+    if to_print: # Print out the result
+        best_preds = p_ranked < best_epsilon # If the pval is larger than the threshold, it will be identified as an anomaly
+        eval_with_test(best_preds, yval_ranked, k) # Print out the result
 
     return best_epsilon
 
@@ -468,7 +510,7 @@ def get_data(label_1_folder,target_folders,data_path, reduce_height = 24, reduce
     
     return imgs_matrix, labels_vector, height, width
 
-def plot_scatter_with_labels(dist,labels):
+def plot_scatter_with_labels(dist,labels,plot_y_label):
     '''
     This function generates a scatter plot with labels to evaluate the detector
     '''
@@ -484,9 +526,9 @@ def plot_scatter_with_labels(dist,labels):
     colors = labels_ranked == 0
 
     plt.figure(figsize=(15,8))
-    plt.suptitle('Scatter Plot of the Construction Error',fontsize = 20)
+    plt.suptitle('Scatter Plot of the ' + plot_y_label,fontsize = 20)
     plt.xlabel('Ranking (ascending)',fontsize = 18)
-    plt.ylabel('Reconstruction Error',fontsize = 18)
+    plt.ylabel(plot_y_label,fontsize = 18)
     plt.scatter(counts,gaps_ranked,c = colors,cmap=plt.cm.copper) 
     plt.ylim(min(gaps_ranked), max(gaps_ranked))
     plt.show()
@@ -506,7 +548,7 @@ def plot_matrix_data(matrix):
     plt.show()
 
     
-def compile_autoencoder(data, data_length, n_components=32):
+def compile_autoencoder(data, data_length, n_components=10):
     '''
     Function to construct and compile the deep autoencoder, then return the model
     Input:
@@ -522,19 +564,21 @@ def compile_autoencoder(data, data_length, n_components=32):
     inputs = Input(shape=(data_length,))
 
     # "encoded" is the encoded representation of the input
-    encoded = Dense(128, activation='relu')(inputs) 
-    encoded = Dense(64, activation='relu')(encoded) 
-    encoded = Dense(encoding_dim, activation='relu')(encoded)
+    # encoded = Dense(128, activation='relu')(inputs) 
+    # encoded = Dense(64, activation='relu')(encoded) 
+    # encoded = Dense(encoding_dim, activation='relu')(encoded)
+    encoded = Dense(encoding_dim, activation='relu')(inputs)
 
     # "decoded" is the lossy reconstruction of the input
-    decoded = Dense(64, activation='relu')(encoded)
-    decoded = Dense(128, activation='relu')(decoded) 
-    decoded = Dense(data_length, activation='sigmoid')(decoded)
+    # decoded = Dense(64, activation='relu')(encoded)
+    # decoded = Dense(128, activation='relu')(decoded) 
+    # decoded = Dense(data_length, activation='sigmoid')(decoded)
+    decoded = Dense(data_length, activation='sigmoid')(encoded)
 
     # this model maps an input to its reconstruction
     autoencoder = Model(inputs, decoded)
     # this model maps an input to its encoded representation
-    # encoder = Model(inputs, encoded)
+    encoder = Model(inputs, encoded)
 
     # create a placeholder for an encoded (32-dimensional) input h
     #encoded_input = Input(shape=(encoding_dim,))
@@ -545,5 +589,4 @@ def compile_autoencoder(data, data_length, n_components=32):
 
     autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
     
-    # return autoencoder, encoder
-    return autoencoder
+    return autoencoder, encoder
