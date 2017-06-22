@@ -590,3 +590,45 @@ def compile_autoencoder(data, data_length, n_components=5):
     autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
     
     return autoencoder, encoder
+
+        
+def compile_autoencoder_deep(data, data_length, n_components=30):
+    '''
+    Function to construct and compile the deep autoencoder, then return the model
+    Input:
+        - data: input data (images in a n*m matrix format)
+        - data_length: size of each data point; used as the height 
+        - n_components: number of components we want to keep in the decoded data
+    '''
+    # this is the size of our encoded representations
+    encoding_dim = n_components  # 32 floats -> compression of factor 24.5, assuming the input is 784 floats
+
+    # this is our input placeholder
+    num_data = len(data)
+    inputs = Input(shape=(data_length,))
+
+    # "encoded" is the encoded representation of the input
+    encoded = Dense(128, activation='relu')(inputs) 
+    encoded = Dense(64, activation='relu')(encoded) 
+    encoded = Dense(encoding_dim, activation='relu')(encoded)
+    
+    # "decoded" is the lossy reconstruction of the input
+    decoded = Dense(64, activation='relu')(encoded)
+    decoded = Dense(128, activation='relu')(decoded) 
+    decoded = Dense(data_length, activation='sigmoid')(decoded)
+    
+    # this model maps an input to its reconstruction
+    autoencoder = Model(inputs, decoded)
+    # this model maps an input to its encoded representation
+    encoder = Model(inputs, encoded)
+
+    # create a placeholder for an encoded (32-dimensional) input h
+    #encoded_input = Input(shape=(encoding_dim,))
+    # retrieve the last layer of the autoencoder model (one layer before the final reconstruction)
+    #decoder_layer = autoencoder.layers[-3]
+    # create the decoder model that maps an encoded input to its reconstruction
+    #decoder = Model(encoded_input, decoder_layer(encoded_input))
+
+    autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
+    
+    return autoencoder, encoder
