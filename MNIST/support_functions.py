@@ -4,6 +4,8 @@ import random
 from random import shuffle
 from scipy import stats  
 from scipy.stats import multivariate_normal
+from keras.layers import Input, Dense
+from keras.models import Model
 
 def label_anomaly(labels_input, anomaly_digit):
     """
@@ -361,3 +363,77 @@ def fit_multivariate_gaussian(data):
     mu, cov = estimate_gaussian(data)
     dist = multivariate_normal(mean = mu, cov = cov,allow_singular=False)
     return dist
+
+def read_process_data(data_path, anomaly_digit):
+    """
+    Automate the process to read and process the data
+    """
+    # File Names
+    imgs_train_fname = 'imgs_train.npy'
+    imgs_test_fname = 'imgs_test.npy'
+    labels_train_fname = 'labels_train.npy'
+    labels_test_fname = 'labels_test.npy'
+
+    # Load
+    imgs_train = np.load(data_path + imgs_train_fname) # images in the training set, with shape: 60000 * 32 * 32
+    imgs_test = np.load(data_path + imgs_test_fname) # images in the testing set, with shape: 10000 * 32 * 32
+
+    labels_train = np.load(data_path + labels_train_fname) # labels in the training set, a vector with length 60000
+    labels_test = np.load(data_path + labels_test_fname) # labels in the test set, a vector with length 10000
+
+    # Define Anomaly
+    # Mark the labels of the target digit as anomaly (1), and others as normal (0)
+    labels_anomaly_train = label_anomaly(labels_train, anomaly_digit) 
+    labels_anomaly_test = label_anomaly(labels_test, anomaly_digit) 
+    
+    ## Transform to 2-D Matrix
+    # Record the dimensions of the image sets
+    img_height = imgs_train.shape[1]
+    img_width = imgs_train.shape[2]
+    len_train = len(imgs_train)
+    len_test = len(imgs_test)
+
+    # reshape to a 2-D Matrix
+    imgs_train = imgs_train.reshape(len_train,-1) # reshape to 60000 * 1024
+    imgs_test = imgs_test.reshape(len_test,-1) # reshape to 10000 * 1024
+
+    return imgs_train, imgs_test, labels_anomaly_train, labels_anomaly_test, img_height, img_width
+
+def compile_autoencoder(data_length, n_components=30):
+    '''
+    Function to construct and compile the deep autoencoder, then return the model
+    Input:
+        - data_length: size of each data point; used as the height 
+        - n_components: number of components we want to keep in the decoded data
+    '''
+    # this is the size of our encoded representations
+    encoding_dim = n_components  # 32 floats -> compression of factor 24.5, assuming the input is 784 floats
+
+    # this is our input placeholder
+    inputs = Input(shape=(data_length,))
+
+    # "encoded" is the encoded representation of the input
+    encoded = Dense(128, activation='relu')(inputs) 
+    encoded = Dense(64, activation='relu')(encoded) 
+    encoded = Dense(encoding_dim, activation='relu')(encoded)
+    
+    # "decoded" is the lossy reconstruction of the input
+    decoded = Dense(64, activation='relu')(encoded)
+    decoded = Dense(128, activation='relu')(decoded) 
+    decoded = Dense(data_length, activation='sigmoid')(decoded)
+    
+    # this model maps an input to its reconstruction
+    autoencoder = Model(inputs, decoded)
+    # this model maps an input to its encoded representation
+    encoder = Model(inputs, encoded)
+
+    # create a placeholder for an encoded (32-dimensional) input h
+    #encoded_input = Input(shape=(encoding_dim,))
+    # retrieve the last layer of the autoencoder model (one layer before the final reconstruction)
+    #decoder_layer = autoencoder.layers[-3]
+    # create the decoder model that maps an encoded input to its reconstruction
+    #decoder = Model(encoded_input, decoder_layer(encoded_input))
+
+    autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
+    
+    return autoencoder, encoder
