@@ -21,7 +21,7 @@ label_1_folder = [9,21]
 target_folders = range(1,22) # 35
 data_path = "CroppedYale/"
 
-# Read image matrix (n*m), labels (vector of m), and image size
+# Read image matrix (m*n), labels (vector of m), and image size
 imgs, labels, height, width = get_data(label_1_folder,target_folders,data_path)
 # The length of one image vector
 img_size = height*width 
@@ -33,11 +33,11 @@ autoencoder, encoder = compile_autoencoder_deep(imgs, img_size)
 
 # Prepare the input
 # Select only the Normal Image Dataset
-imgs_normal = imgs[:,labels == 0]
+imgs_normal = imgs[labels == 0]
 # Split the images and labels
 # By default: 80% in training and 20% in testing
 train_ind, test_ind = perm_and_split(len(imgs_normal))
-x_all = np.transpose(imgs_normal)
+x_all = imgs_normal # m*n
 x_train = x_all[train_ind,:]
 x_test = x_all[test_ind,:]
 
