@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt  
 import random
 from random import shuffle
+from scipy import stats  
+from scipy.stats import multivariate_normal
 
 def label_anomaly(labels_input, anomaly_digit):
     """
@@ -129,6 +131,22 @@ def pca_reconst(matrix, pca_matrix):
     - matrix: of size m*n
     - pca_matrix: of size n*k
     """
+    # Mean shift and PCA encoding
+    pca_encoded,component_mean = pca_encode(matrix, pca_matrix)
+
+    # Reconstruct through PCA Matrix and Mean Vector
+    # Shape of the reconstructed face image matrix: m * n
+    pca_decoded = pca_encoded.dot(pca_matrix.T) + component_mean
+
+    return pca_decoded
+
+def pca_encode(matrix, pca_matrix):
+    """
+    Apply PCA Encoding only on the input matrix
+    input:
+    - matrix: of size m*n
+    - pca_matrix: of size n*k
+    """
     # Mean Shift
     matrix_shifted, component_mean = mean_shift(matrix)
     
@@ -137,13 +155,7 @@ def pca_reconst(matrix, pca_matrix):
     # Shape of pca_matrix: n * k
     # Shape of the transformed image matrix: m * k
     pca_encoded = matrix_shifted.dot(pca_matrix)
-
-    # Reconstruct through PCA Matrix and Mean Vector
-    # Shape of the reconstructed face image matrix: m * n
-    pca_decoded = pca_encoded.dot(pca_matrix.T) + component_mean
-
-    return pca_decoded
-
+    return pca_encoded,component_mean
 
 def find_euclidean_distance(matrix1,matrix2):
     """
@@ -195,6 +207,48 @@ def select_threshold_distance(edistance, yval,k=10, to_print = False):
 
     return best_epsilon
 
+def select_threshold_probability(p, yval,k=10, to_print = False):  
+    """
+    This function finds the best threshold value to detect the anomaly given the PDF values and True label Values
+    p: probability given by the Multivariate Gaussian Model
+    yval: True label value
+    k: the k used to compute the precision at k in the testing set
+    to_print: indicate if the result need to be printed
+    """
+    # Initialize the Metrics: only the selected will be used in optimization
+    best_epsilon = 0
+    best_f1 = 0
+    # best_tp = 0
+    # best_fp = 0
+    # best_fn = 0
+    # best_precK = 0 # Precision at k
+
+    # Sort the edistance and yval based on pval from high to low (in order to measure the Precision at K)
+    rank = np.argsort(p) # Sort from the smallest to the largest
+    # If we want a rank from the smallest to the largest, we need to change the label here
+    p_ranked = p[rank] # Sort the Probability
+    yval_ranked = yval[rank] # Sort the yval with the same order
+
+    # Step Size
+    step = (p_ranked.max() - p_ranked.min()) / 1000
+
+    for epsilon in np.arange(p_ranked.min(), p_ranked.max(), step):
+        preds_ranked = p_ranked < epsilon # If the probability is smaller than the threshold, it will be identified as an anomaly
+
+        tp,tn,fp,fn,f1,precK = eval_prediction(preds_ranked,yval_ranked,k,rate = True)
+
+        # Optimize to find the highest precision at k
+        if f1 > best_f1:
+            best_epsilon = epsilon # Record the current epsilon
+            best_f1 = f1 # Record the current target measurement: f1
+
+    # Get the best measurement with the best threshold
+    if to_print: # Print out the result
+        best_preds = p_ranked < best_epsilon # If the pval is larger than the threshold, it will be identified as an anomaly
+        eval_with_test(best_preds, yval_ranked, k) # Print out the result
+
+    return best_epsilon
+    
 def eval_prediction(pred,yval,k, rate = False):
     """
     Function to evaluate the correctness of the predictions with multiple metrics
@@ -288,3 +342,22 @@ def evaluate_pred(Preds, Labels):
     F = (2*Precision*Recall) / max(1,Precision+Recall)
     
     return Recall, Precision, F
+
+def estimate_gaussian(X):
+    """
+    Compute the parameters of the Gaussian Distribution
+    Note: X is given in the shape of m*k, where k is the number of (reduced) dimensions, and m is the number of images
+    """
+    mu =np.mean(X,axis=0)
+    cov = np.cov(X,rowvar=0)
+
+    return mu, cov
+
+def fit_multivariate_gaussian(data):
+    """
+    This function is used to compute the mu and cov based on the given data, and fit a multivariate gaussian dist
+    This data is given as a m*k matrix, where m represents the number of samples, and k represents the number of dimensions
+    """
+    mu, cov = estimate_gaussian(data)
+    dist = multivariate_normal(mean = mu, cov = cov,allow_singular=False)
+    return dist
