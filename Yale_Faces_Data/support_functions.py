@@ -501,10 +501,11 @@ def get_data(label_1_folder,target_folders,data_path, reduce_height = 24, reduce
     img_size = height*width # The length of one image vector
     
     # Initialize the matrix to store the entire image list
-    imgs_matrix = np.zeros((img_size,num_imgs)) 
+    # matrix size: m*n
+    imgs_matrix = np.zeros((num_imgs,img_size)) 
     # Iterate through each image, convert it into an array, and add to the imgs_matrix as a column
     for i in range(0,len(imgs)):
-        imgs_matrix[:,i] = imgs[i].reshape(img_size)
+        imgs_matrix[i,:] = imgs[i].reshape(img_size)
     # Vectorize the labels list
     labels_vector = np.hstack(labels) # Easier to get multiple items from a vector than from a list
     
