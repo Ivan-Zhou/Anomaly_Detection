@@ -123,7 +123,7 @@ def plot_eigenfaces(pca_matrix,height, width):
     n_eigen = pca_matrix.shape[1]
     # Define the layout of the plots
     n_row = 4
-    n_col = n_eigen//n_row 
+    n_col = min(5,n_eigen//n_row)
 
     # Create figure with 3x3 sub-plots.
     fig, axes = plt.subplots(n_row, n_col,figsize=(15,15))
@@ -143,11 +143,11 @@ def plot_eigenfaces(pca_matrix,height, width):
 def mean_shift(components):
     """
     This function applies mean shift to each component in the component matrix
-    The input components is a n*m matrix. Each row correspons to one component.
+    The input components is a m*n matrix. Each row correspons to one component.
     It is important to return the components' mean vector: we will need it in PCA reconstruction
     """
-    component_mean = np.mean(components,axis = 1)
-    shifted_components = (components.T - component_mean).T # Necessary to take transpose twice here
+    component_mean = np.mean(components,axis = 0)
+    shifted_components = (components - component_mean)
     return shifted_components, component_mean
 
 def check_eigen(eigen_value, eigen_vector,cov_matrix):
@@ -163,11 +163,11 @@ def check_eigen(eigen_value, eigen_vector,cov_matrix):
 def plot_compare_after_reconst(img_matrix_reconst,imgs_matrix,height,width):
     """
     This function compares the images reconstructed after PCA with their original one.
-    The shape of both image matrice in the input is n*m, where n is the number of components, 
+    The shape of both image matrice in the input is m*n, where n is the number of components, 
     and m is the number of images.
     """
     # Permutate through the image index
-    ind = np.random.permutation(imgs_matrix.shape[1])
+    ind = np.random.permutation(imgs_matrix.shape[0])
 
     # Create figure with multiple sub-plots.
     fig, axes = plt.subplots(4, 4,figsize=(15,15))
@@ -179,10 +179,10 @@ def plot_compare_after_reconst(img_matrix_reconst,imgs_matrix,height,width):
     for i, ax in enumerate(axes.flat): 
         if i % 2 == 0:
             image_count += 1
-            ax.imshow(imgs_matrix[:,ind[i]].reshape(height,width), plt.cm.gray)
+            ax.imshow(imgs_matrix[ind[i],:].reshape(height,width), plt.cm.gray)
             xlabel = "Example {0}: Original Image".format(image_count)
         else:
-            ax.imshow(img_matrix_reconst[:,ind[i-1]].reshape(height,width), plt.cm.gray)
+            ax.imshow(img_matrix_reconst[ind[i-1],:].reshape(height,width), plt.cm.gray)
             xlabel = "Example {0}: Reconstructed from PCA".format(image_count)
         # Show the classes as the label on the x-axis.
         ax.set_xlabel(xlabel)
@@ -328,7 +328,7 @@ def find_euclidean_distance(matrix1,matrix2):
     This function find the Euclidean Distance between two Matric
     The distance is between the same columns of two matric
     """
-    dist = np.linalg.norm(matrix1 - matrix2,axis = 0) # By specifying axis = 0, we find the distance between columns
+    dist = np.linalg.norm(matrix1 - matrix2,axis = 1) # By specifying axis = 0, we find the distance between columns
     return dist
 
 def select_threshold_distance(edistance, yval,k=10, to_print = False):  
