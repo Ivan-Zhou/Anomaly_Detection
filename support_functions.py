@@ -633,3 +633,47 @@ def compile_autoencoder_deep(data, data_length, n_components=30):
     autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
     
     return autoencoder, encoder
+
+def label_anomaly(labels_input, anomaly_digit):
+    """
+    This function create a label vector to indicate anomaly. 
+    input:
+    - labels_input: the input labels vector that contains number 0-9 from MNIST
+    - anomaly_digit: the target digit that we define as anomaly
+    """
+    labels_anomaly = np.zeros(labels_input.shape) # create a zero vector of the same length with the input label vector
+    labels_anomaly[labels_input == anomaly_digit] = 1 # Mark the label of the anomaly digit as 1
+    return labels_anomaly # return the newly created vector
+
+def pca_reconst(matrix, pca_matrix):
+    """
+    Apply PCA Encoding and Decoding on the input matrix
+    input:
+    - matrix: of size m*n
+    - pca_matrix: of size n*k
+    """
+    # Mean shift and PCA encoding
+    pca_encoded,component_mean = pca_encode(matrix, pca_matrix)
+
+    # Reconstruct through PCA Matrix and Mean Vector
+    # Shape of the reconstructed face image matrix: m * n
+    pca_decoded = pca_encoded.dot(pca_matrix.T) + component_mean
+
+    return pca_decoded
+
+def pca_encode(matrix, pca_matrix):
+    """
+    Apply PCA Encoding only on the input matrix
+    input:
+    - matrix: of size m*n
+    - pca_matrix: of size n*k
+    """
+    # Mean Shift
+    matrix_shifted, component_mean = mean_shift(matrix)
+    
+    # Compute the transformed matrix
+    # Shape of matrix: m * n
+    # Shape of pca_matrix: n * k
+    # Shape of the transformed image matrix: m * k
+    pca_encoded = matrix_shifted.dot(pca_matrix)
+    return pca_encoded,component_mean
