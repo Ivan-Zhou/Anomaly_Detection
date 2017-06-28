@@ -533,35 +533,37 @@ def label_anomaly(labels_input, anomaly_digit):
     labels_anomaly[labels_input == anomaly_digit] = 1 # Mark the label of the anomaly digit as 1
     return labels_anomaly # return the newly created vector
 
-def pca_reconst(matrix, pca_matrix):
-    """
-    Apply PCA Encoding and Decoding on the input matrix
-    input:
-    - matrix: of size m*n
-    - pca_matrix: of size n*k
-    """
-    # Mean shift and PCA encoding
-    pca_encoded,component_mean = pca_encode(matrix, pca_matrix)
+def train_test_with_reconstruction_error(data_original_train, data_decoded_train, data_original_test, data_decoded_test, labels_train, labels_test):
+    ## Training
+    # Find the euclidean distance between the original dataset and the decoded dataset
+    dist_train = find_euclidean_distance(data_decoded_train,data_original_train)
 
-    # Reconstruct through PCA Matrix and Mean Vector
-    # Shape of the reconstructed face image matrix: m * n
-    pca_decoded = pca_encoded.dot(pca_matrix.T) + component_mean
+    # Plot of the reconstruction error from high to low
+    print("The higher the reconstruction error, the more likely the point will be an anomaly")
+    plot_scatter_with_labels(dist_train,labels_train,"Reconstruction Error")
 
-    return pca_decoded
+    # Get the number of actual anomaly for the precision-k test
+    k_train = sum(labels_train)
+    print("Training Results:")
+    threshold_error = select_threshold_distance(dist_train, labels_train,k_train,to_print = True)
+    print()
 
-def pca_encode(matrix, pca_matrix):
-    """
-    Apply PCA Encoding only on the input matrix
-    input:
-    - matrix: of size m*n
-    - pca_matrix: of size n*k
-    """
-    # Mean Shift
-    matrix_shifted, component_mean = mean_shift(matrix)
-    
-    # Compute the transformed matrix
-    # Shape of matrix: m * n
-    # Shape of pca_matrix: n * k
-    # Shape of the transformed image matrix: m * k
-    pca_encoded = matrix_shifted.dot(pca_matrix)
-    return pca_encoded,component_mean
+    ## Testing
+    # Find the euclidean distance between the original dataset and the decoded dataset
+    dist_test = find_euclidean_distance(data_decoded_test,data_original_test)
+
+    # Sort the Images and Labels based on the Reconstruction Error
+    rank_test = np.argsort(-dist_test) # Sort from the Largest to the Smallest
+    dist_test_ranked = dist_test[rank_test] # Sort the Reconstruction Error
+    # Rank Labels accoring to the same order
+    labels_test_ranked = labels_test[rank_test]
+
+    # Give Predictions
+    preds = np.zeros(labels_test.shape) # Initialization
+    preds[dist_test_ranked > threshold_error] = 1
+
+    # Get the number of actual anomaly for the precision-k test
+    k_train = sum(labels_test)
+    # Evaluate the Detector with Testing Data
+    print("Testing Results:")
+    eval_with_test(preds, labels_test_ranked, k_train)
