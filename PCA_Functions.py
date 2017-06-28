@@ -120,7 +120,7 @@ def reconstruct_with_pca(data, component_mean, pca_matrix, n_components):
     data_decoded = decode_pca(data_encoded, component_mean, pca_matrix, n_components)
     return data_decoded
 
-def pca_all_processes(data,labels,n_components,plot_eigenfaces_bool = False,plot_comparison_bool = False, height = 0,width = 0):
+def pca_all_processes(data,labels,n_components, plot_eigenfaces_bool = False,decode = False, plot_comparison_bool = False, height = 0,width = 0):
     """
     Factorize the process of pca computation and reconstruction in one function
     data: in a matrix form with shape m*n
@@ -137,12 +137,18 @@ def pca_all_processes(data,labels,n_components,plot_eigenfaces_bool = False,plot
         print("Below is the eigenfaces from the PCA Matrix")
         plot_eigenfaces(pca_matrix[:,:n_components],height, width)
     
-    # Encode and then decode the entire dataset with the pca_matrix
-    data_decoded = reconstruct_with_pca(data, component_mean, pca_matrix, n_components)
+    
+    if decode: # We want to have the decoded data
+        # Encode and then decode the entire dataset with the pca_matrix
+        data_decoded = reconstruct_with_pca(data, component_mean, pca_matrix, n_components)
 
-    if plot_comparison_bool:
-        # Compare the original and reconstructed data in images 
-        print("Below is a comparison between the original and the reconstructed data")
-        plot_compare_after_reconst(data_decoded,data,height,width) # Function saved in support_functions.py
+        if plot_comparison_bool:
+            # Compare the original and reconstructed data in images 
+            print("Below is a comparison between the original and the reconstructed data")
+            plot_compare_after_reconst(data_decoded,data,height,width) # Function saved in support_functions.py
 
-    return data_decoded, pca_matrix, component_mean
+        return data_decoded, pca_matrix, component_mean
+
+    else:
+        data_encoded = encode_pca(data, component_mean, pca_matrix, n_components)
+        return data_encoded, pca_matrix, component_mean
