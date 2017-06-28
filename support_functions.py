@@ -13,81 +13,9 @@ from random import shuffle
 from keras.layers import Input, Dense
 from keras.models import Model
 
-def read_images(data_path,target_folders,label_1_folder,reduce_height = 24,reduce_width = 21):
-    """
-    This function reads in all images inside the specified folders, and label the images based on label_1_folder
-    data_path: the path of the folder where all the image folders reside in
-    target_folders: the target_folders to be read from
-    label_1_folder: images in the specified folders will be labeled with 1
-    """
-    # label_1_folder = [9,21]
-    folder_paths = glob.glob(data_path + "*")
-    images = [] # Initialize a list to record images
-    labels = [] # Initialize a list to record labels
-    for folder_path in folder_paths:
-        index = int(folder_path[-2:]) # Get the index embeded in the folder path
-        if index in target_folders:
-            # Assign labels
-            if index in label_1_folder:
-                label =1
-            else:
-                label = 0
-
-            # Read in images and corresponding labels
-            img_paths = glob.glob(folder_path + "/*.pgm")
-            for img_path in img_paths: 
-                if img_path.find("Ambient")>0:
-                    img_paths.remove(img_path) # We do not want the "Ambient" image because it is a profile picture
-                else:
-                    # img = plt.imread(img_path) # Used to read image without resizing
-                    img_raw = Image.open(img_path) # Used when we need to resize the image (downsize in this case)
-                    img_reduce = img_raw.resize((reduce_width, reduce_height), Image.BILINEAR) # Resize the image
-                    img = np.array(img_reduce) # This step is necessary if we use Image.open()
-                    images.append(img)
-                    labels.append(label)
-    return images,labels
-
-
-def dark_pixel_curve(images,light_threshold = 20):
-    """
-    Images are taken at different lighting conditions; thus some of the photos are dark. In order to avoid 
-    the impact of the bad lighting conditions, we need to remove photos with large number of dark pixels. 
-    This curve shows us the number of images to be removed at different thresholds (total number of pixels 
-    that are below 20 in one image). It can help us select an appropriate threshold. 
-    """
-    height, width = images[0].shape # Get the dimension of one image
-    images_num = len(images)
-    thresh_list = range(100,height*width,100) # Threshold levels to be tested: from 100 to the total pixels
-    remove_list = []
-    for dark_pixel_threshold in thresh_list:
-        remove_count = 0
-        for i in range(0,images_num):
-            if sum(sum(images[i] < light_threshold)) > dark_pixel_threshold:
-                remove_count = remove_count + 1
-        remove_list.append(remove_count)
-    
-    plt.plot(thresh_list,remove_list)
-    plt.xlabel("Number of dark pixels in an image")
-    plt.ylabel("Number of images to be removed from the list")
-    plt.title("Select the right threshold level")
-    
-def remove_dark_img(imgs,labels,dark_pixel_threshold,light_threshold = 20):
-    """
-    This function remove images that have more dark pixels (<20) than our threshold
-    """
-    remove_count = 0
-    imgs_num = len(imgs)
-    for i in range(imgs_num-1,0-1,-1):
-        if sum(sum(imgs[i] < light_threshold)) > dark_pixel_threshold:
-            del imgs[i]
-            del labels[i]
-            remove_count = remove_count + 1
-    print (remove_count,' images are above our threshold and thus removed from the list')
-    return imgs,labels,remove_count
-
 def plot_images(imgs,labels):
     """
-    Plot 25 images selected randomly
+    To understand the data in image form: Plot 25 images selected randomly and add labels
     """
     ind = np.random.permutation(len(imgs))
 
@@ -97,7 +25,10 @@ def plot_images(imgs,labels):
 
     for i, ax in enumerate(axes.flat): 
         ax.imshow(imgs[ind[i]], plt.cm.gray)
-        xlabel = "Anomaly: {0}".format(labels[ind[i]])
+        if labels[ind[i]] == 1:
+            xlabel = 'Anomaly'
+        else:
+            xlabel = 'Normal'
         # Show the classes as the label on the x-axis.
         ax.set_xlabel(xlabel)
         
@@ -109,60 +40,17 @@ def plot_images(imgs,labels):
 
 def show_anomaly_images(images,labels):
     """
-    This function randomly show 9 images with label 1
+    This function randomly show 9 images with label 1, which is anomaly
     """
     anomaly_label_index = np.asarray(np.where(labels)).reshape(-1) # Get the indice of anomaly
     anomaly_image = [images[i] for i in anomaly_label_index] # Extract the images labeled as anomaly
     anomaly_label = [labels[i] for i in anomaly_label_index] # Extract the images labeled as anomaly
     plot_images(anomaly_image,anomaly_label) # Show 9 images randomly
-    
-def plot_eigenfaces(pca_matrix,height, width):
-    """
-    This function plot the eigenfaces based on the given PCA Matrix
-    """
-    n_eigen = pca_matrix.shape[1]
-    # Define the layout of the plots
-    n_row = 4
-    n_col = min(5,n_eigen//n_row)
 
-    # Create figure with 3x3 sub-plots.
-    fig, axes = plt.subplots(n_row, n_col,figsize=(15,15))
-    fig.subplots_adjust(hspace=0.1, wspace=0.01)
-
-    for i, ax in enumerate(axes.flat): 
-        ax.imshow(pca_matrix[:,i].reshape(height, width), plt.cm.gray)
-        xlabel = "Eigenface: {0}".format(i+1)
-        # Show the classes as the label on the x-axis.
-        ax.set_xlabel(xlabel)
-        
-        # Remove ticks from the plot.
-        ax.set_xticks([])
-        ax.set_yticks([])
-    plt.show()
-
-def mean_shift(components):
-    """
-    This function applies mean shift to each component in the component matrix
-    The input components is a m*n matrix. Each row correspons to one component.
-    It is important to return the components' mean vector: we will need it in PCA reconstruction
-    """
-    component_mean = np.mean(components,axis = 0)
-    shifted_components = (components - component_mean)
-    return shifted_components, component_mean
-
-def check_eigen(eigen_value, eigen_vector,cov_matrix):
-    """
-    This function check the correctness of eigenvector & eigenvalue through the equation
-    cov_matrix * eigen_vector = eigen_value * eigen_vector
-    """
-    for i in range(len(eigen_value)): 
-        n = cov_matrix.shape[1]
-        eigv = eigen_vector[:,i].reshape(1,n).T 
-        np.testing.assert_array_almost_equal(cov_matrix.dot(eigv), eigen_value[i] * eigv, decimal=6, err_msg='', verbose=True)
-        
+   
 def plot_compare_after_reconst(img_matrix_reconst,imgs_matrix,height,width):
     """
-    This function compares the images reconstructed after PCA with their original one.
+    This function compares the images reconstructed after encoding & decoding with their original one.
     The shape of both image matrice in the input is m*n, where n is the number of components, 
     and m is the number of images.
     """
@@ -183,7 +71,7 @@ def plot_compare_after_reconst(img_matrix_reconst,imgs_matrix,height,width):
             xlabel = "Example {0}: Original Image".format(image_count)
         else:
             ax.imshow(img_matrix_reconst[ind[i-1],:].reshape(height,width), plt.cm.gray)
-            xlabel = "Example {0}: Reconstructed from PCA".format(image_count)
+            xlabel = "Example {0}: Reconstructed Image".format(image_count)
         # Show the classes as the label on the x-axis.
         ax.set_xlabel(xlabel)
 
@@ -246,14 +134,14 @@ def split_train_eval_test(labels,ratio_train = 0.8, ratio_val = 0):
     if ratio_val> 0:
         return train_ind, val_ind, test_ind
     else:
-        return train_ind, test_ind
+        return train_ind, test_ind # No validation set
         
 def estimate_gaussian(X):
     """
     Compute the parameters of the Gaussian Distribution
     Note: X is given in the shape of m*k, where k is the number of (reduced) dimensions, and m is the number of images
     """
-    mu =np.mean(X,axis=0)
+    mu = np.mean(X,axis=0)
     cov = np.cov(X,rowvar=0)
 
     return mu, cov
