@@ -134,6 +134,7 @@ def pca_all_processes(data,labels,n_components,plot_eigenfaces_bool = False,plot
 
     if plot_eigenfaces_bool:
         # Visualize the eigenfaces with the pca matrix
+        print("Below is the eigenfaces from the PCA Matrix")
         plot_eigenfaces(pca_matrix[:,:n_components],height, width)
     
     # Encode and then decode the entire dataset with the pca_matrix
@@ -141,6 +142,7 @@ def pca_all_processes(data,labels,n_components,plot_eigenfaces_bool = False,plot
 
     if plot_comparison_bool:
         # Compare the original and reconstructed data in images 
+        print("Below is a comparison between the original and the reconstructed data")
         plot_compare_after_reconst(data_decoded,data,height,width) # Function saved in support_functions.py
 
     return data_decoded, pca_matrix, component_mean
