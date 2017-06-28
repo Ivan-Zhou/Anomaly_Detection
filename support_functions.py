@@ -496,6 +496,9 @@ def label_anomaly(labels_input, anomaly_digit):
     return labels_anomaly # return the newly created vector
 
 def train_test_with_reconstruction_error(data_original_train, data_decoded_train, data_original_test, data_decoded_test, labels_train, labels_test):
+    """
+    Factorize the training and testing process of the Reconstruction Error-based method
+    """
     ## Training
     # Find the euclidean distance between the original dataset and the decoded dataset
     dist_train = find_euclidean_distance(data_decoded_train,data_original_train)
@@ -506,6 +509,7 @@ def train_test_with_reconstruction_error(data_original_train, data_decoded_train
 
     # Get the number of actual anomaly for the precision-k test
     k_train = sum(labels_train)
+    # Train the Anomaly Detector
     print("Training Results:")
     threshold_error = select_threshold_distance(dist_train, labels_train,k_train,to_print = True)
     print()
@@ -525,7 +529,46 @@ def train_test_with_reconstruction_error(data_original_train, data_decoded_train
     preds[dist_test_ranked > threshold_error] = 1
 
     # Get the number of actual anomaly for the precision-k test
-    k_train = sum(labels_test)
+    k_test = sum(labels_test)
     # Evaluate the Detector with Testing Data
     print("Testing Results:")
-    eval_with_test(preds, labels_test_ranked, k_train)
+    eval_with_test(preds, labels_test_ranked, k_test)
+
+def train_test_with_gaussian(data_train, data_test, labels_train, labels_test):
+    """
+    Factorize the training and testing process of the Multivariate Gaussian-based method
+    """
+    ## Training
+    # Get Gaussian Distribution Model with the Training Data
+    # Note: fit_multivariate_gaussian() is my own coded function
+    dist = fit_multivariate_gaussian(data_train)
+
+    # Get Probability of being Anomaly vs. being Normal
+    p_train = dist.pdf(data_train)   # Probability of Being Normal
+
+    # Plot the Probability with labels
+    plot_scatter_with_labels(p_train, labels_train,'Gaussian Probability')
+
+    # Get the number of actual anomaly for the precision-k test
+    k_train = sum(labels_train)
+    # Train the Anomaly Detector
+    print("Training Results:")
+    threshold_gaussian  = select_threshold_probability(p_train, labels_train,k_train,to_print = True)
+    print()
+
+    ## Testing
+    # Find the euclidean distance between the reconstructed dataset and the original ()
+    p_test = dist.pdf(data_test)   # Probability of Being Normal
+
+    # Sort the Images and Labels based on the Probability
+    rank_test = np.argsort(p_test) # Sort from the Smallest to the Largest
+    p_test_ranked = p_test[rank_test] # Sort the distance
+    labels_test_ranked = labels_test[rank_test] # Rank Labels
+
+    # Give Predictions
+    preds = np.zeros(labels_test_ranked.shape) # Initialization
+    preds[p_test_ranked < threshold_gaussian] = 1 # If the probability is smaller than the threshold, marked as anomaly
+
+    k_test = sum(labels_test)
+    # Evaluate the Detector with Testing Data
+    eval_with_test(preds, labels_test_ranked, k_test)
