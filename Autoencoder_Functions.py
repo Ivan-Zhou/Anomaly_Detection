@@ -93,7 +93,7 @@ def create_hidden_layers(layers_size, inputs, activation_type = 'relu'):
 
 def reconstruct_with_autoencoder(autoencoder,data,visual =False,height = 0, width = 0):
     """
-    
+    Function to reconstruct the data with trained autoencoder
     """
     data_normal = data.astype('float32') / 255. # Normalize the Data
     # Load into the model and get the processed output
@@ -102,3 +102,12 @@ def reconstruct_with_autoencoder(autoencoder,data,visual =False,height = 0, widt
         # Plot the original images and their reconstructed version for comparison
         plot_compare_after_reconst(data_reconstructed,data,height,width)
     return data_reconstructed
+
+def encode_data(encoder,data):
+    """
+    To encode hte data with the trained encoder
+    """
+    data_normal = data.astype('float32') / 255. # Normalize the Data
+    # Load into the model and get the processed output
+    data_encoded = encoder.predict(data_normal)
+    return data_encoded
