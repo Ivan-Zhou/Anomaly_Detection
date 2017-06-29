@@ -190,11 +190,12 @@ def find_euclidean_distance(matrix1,matrix2):
     dist = np.linalg.norm(matrix1 - matrix2,axis = 1) # By specifying axis = 0, we find the distance between columns
     return dist
 
-def select_threshold_distance(edistance, yval,k=10, to_print = False):  
+def select_threshold_distance(edistance, yval,r, k=10, to_print = False):  
     """
     This function finds the best threshold value to detect the anomaly given the euclidean distance and True label Values
     edistance: euclidean distance 
     yval: True label value
+    r: the number of relevant results for R-Precision test
     k: the k used to compute the precision at k in the testing set
     to_print: indicate if the result need to be printed
     """
@@ -309,14 +310,25 @@ def evaluate_pred(Preds, Labels):
     return Recall, Precision, F
 
 def eval_with_test(Preds, Labels, k = 10):
+    """
+    Function to print out the metrices (for the evaluation on both the training and testing dataset)
+    """
     # Find Recall, Precision, F score
     Recall, Precision, F = evaluate_pred(Preds, Labels)
+    # Find the R-Precision
+    RPrec = find_r_prec(Preds, Labels)
     # Find Precision k
     PrecK = find_prec_k(Preds, Labels,k)
     print("Precision: {0:.1f}%".format(Precision * 100))
     print("Recall: {0:.1f}%".format(Recall * 100))
     print("F-score: {0:.1f}%".format(F * 100))
+    print("R-Precision: {0:.1f}%".format(PrecK * 100))
     print("Precision@" + str(k) +": {0:.1f}%".format(PrecK * 100))
+
+def find_r_prec(Preds, Labels):
+    """"
+    Function to compute R-Precision: average precision for the first n results, where n = # relevant results (anomaly)
+    """
 
 def find_prec_k(Preds, Labels,k):
     """
@@ -381,7 +393,7 @@ def label_anomaly(labels_input, anomaly_digit):
     labels_anomaly[labels_input == anomaly_digit] = 1 # Mark the label of the anomaly digit as 1
     return labels_anomaly # return the newly created vector
 
-def train_test_with_reconstruction_error(data_original_train, data_decoded_train, data_original_test, data_decoded_test, labels_train, labels_test):
+def train_test_with_reconstruction_error(data_original_train, data_decoded_train, data_original_test, data_decoded_test, labels_train, labels_test,k):
     """
     Factorize the training and testing process of the Reconstruction Error-based method
     """
@@ -393,11 +405,11 @@ def train_test_with_reconstruction_error(data_original_train, data_decoded_train
     print("The higher the reconstruction error, the more likely the point will be an anomaly")
     plot_scatter_with_labels(dist_train,labels_train,"Reconstruction Error")
 
-    # Get the number of actual anomaly for the precision-k test
-    k_train = sum(labels_train)
+    # Get the number of actual anomaly for the R-precision
+    r_train = sum(labels_train)
     # Train the Anomaly Detector
     print("Training Results:")
-    threshold_error = select_threshold_distance(dist_train, labels_train,k_train,to_print = True)
+    threshold_error = select_threshold_distance(dist_train, labels_train,r_train,k,to_print = True)
     print()
 
     ## Testing
