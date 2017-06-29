@@ -120,7 +120,7 @@ def reconstruct_with_pca(data, component_mean, pca_matrix, n_components):
     data_decoded = decode_pca(data_encoded, component_mean, pca_matrix, n_components)
     return data_decoded
 
-def pca_all_processes(data,labels,n_components, plot_eigenfaces_bool = False,decode = False, plot_comparison_bool = False, height = 0,width = 0):
+def pca_all_processes(data,labels,n_components, plot_eigenfaces_bool = False,decode = True, plot_comparison_bool = False, height = 0,width = 0):
     """
     Factorize the process of pca computation and reconstruction in one function
     data: in a matrix form with shape m*n
