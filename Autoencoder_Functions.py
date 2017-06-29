@@ -6,7 +6,7 @@ from support_functions import *
 from keras.layers import Input, Dense
 from keras.models import Model
 
-def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,save_model = True):
+def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,epochs_size = 80, batch_size = 256,save_model = True):
     """
     data is a matrix of size m*n, where m is the sample size, and n is the dimenions
     labels is a vector of length n
@@ -15,12 +15,11 @@ def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,save_
     """
     # Generate and Compile a Deep Autoencoder and its encoder
     data_dimensions = data.shape[1] # The dimension = # columns
-    autoencoder,encoder = compile_autoencoder(data, data_dimensions,encoder_layers_size,decoder_layers_size)
+    autoencoder,encoder = compile_autoencoder(data_dimensions,encoder_layers_size,decoder_layers_size)
 
     # Prepare the input
     # Select only the Normal Image Dataset
     data_normal = data[labels == 0]
-    print(data_normal.shape)
     # Split the images and labels
     # By default: 80% in training and 20% in testing
     train_ind, test_ind = perm_and_split(len(data_normal))
@@ -35,8 +34,8 @@ def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,save_
 
     # Run the model
     autoencoder.fit(x_train, x_train,
-                    epochs=80,
-                    batch_size=256,
+                    epochs = epochs_size,
+                    batch_size = batch_size,
                     shuffle=True,
                     validation_data=(x_test, x_test)) # x_train images are both the target and input
 
@@ -46,13 +45,12 @@ def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,save_
     return autoencoder,encoder
 
         
-def compile_autoencoder(data, data_length, encoder_layers_size,decoder_layers_size):
+def compile_autoencoder(data_length, encoder_layers_size,decoder_layers_size):
     '''
     Function to construct and compile the deep autoencoder, then return the model
     Input:
-        - data: input data (images in a n*m matrix format)
-        - data_length: size of each data point; used as the height 
-        - n_components: number of components we want to keep in the decoded data
+        - data_length: size of each data point; used as the height
+        - encoder_layers_size,decoder_layers_size: model configuration
     '''
     # Set up the input placeholder
     inputs = Input(shape=(data_length,))

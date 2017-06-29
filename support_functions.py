@@ -181,35 +181,6 @@ def eval_prediction(pred,yval,k, rate = False):
         return tpr,tnr,fpr,fnr,f1,PrecK
     else:
         return true_positive,true_negative,false_positive,false_negative,f1,PrecK
-    
-def compute_pca_matrix(data, n_components,height, width):
-    """
-    This function compute the pca matrix with the given data
-    The data should be given in the matrix form n*m, where n is the number of dimensions, and m is the number of samples
-    The data should have been processed with mean-shift
-    n_components: Number of components to be kept after PCA
-    """
-    # Compute the Covariance Matrix
-    cov_matrix = np.cov(data)
-
-    # Compute the eigen value and eigen vectors
-    eigen_value, eigen_vector = np.linalg.eig(cov_matrix)
-
-    # Sort the eigenvectors by decreasing eigenvalues
-    # First make a list of (eigenvalue, eigenvector) tuples 
-    eig_pairs = [(np.abs(eigen_value[i]), eigen_vector[:,i]) for i in range(len(eigen_value))] 
-    # Sort the (eigenvalue, eigenvector) tuples from high to low 
-    eig_pairs.sort(key=lambda x: x[0], reverse=True)
-
-    # Convert the sorted eigen vector list to matrix form
-    eigen_vector_sorted = np.zeros((height*width,n_components))
-    for i in range(0,n_components):
-        eigen_vector_sorted[:,i] = eig_pairs[i][1]
-
-    # Cut the sorted eigenvectors by columns to get the transformational matrix for PCA
-    pca_matrix = eigen_vector_sorted[:,:n_components]
-
-    return pca_matrix
 
 def find_euclidean_distance(matrix1,matrix2):
     """
@@ -351,6 +322,7 @@ def find_prec_k(Preds, Labels,k):
     """
     Compute the Precision at K
     """
+    k = int(k) # ensure it is an integer
     PredsK = Preds[0:k] # Prediction at k
     LabelsK = Labels[0:k] # Labels at k
     ind_PK = (PredsK == 1) # Indices of Positive at K

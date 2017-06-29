@@ -5,13 +5,8 @@ import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
-
-# import os
-# os.chdir('../') # Go to the parent folder
 from support_functions import *
 from Autoencoder_Functions import *
-from PCA_Functions import *
-# os.chdir('Yale_Faces_Data')
 
 # Import Dataset
 # Define the images to be read and the corresponding labels
