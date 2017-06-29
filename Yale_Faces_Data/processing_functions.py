@@ -49,6 +49,7 @@ def get_data(label_1_folder,target_folders,data_path, reduce_height = 24, reduce
         imgs_matrix[i,:] = imgs[i].reshape(img_size)
     # Vectorize the labels list
     labels_vector = np.hstack(labels) # Easier to get multiple items from a vector than from a list
+    # labels_vector.reshape(-1)
     
     return imgs_matrix, labels_vector, height, width
 
