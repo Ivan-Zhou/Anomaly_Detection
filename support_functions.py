@@ -12,6 +12,7 @@ import random
 from random import shuffle
 from keras.layers import Input, Dense
 from keras.models import Model
+from PCA_Functions import *
 
 def plot_images(imgs,labels):
     """
@@ -468,3 +469,60 @@ def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k
 
     # Evaluate the Detector with Testing Data
     eval_with_test(preds, labels_test_ranked, k)
+
+def scatter_plot_anomaly(data, labels,title = ''):
+    """
+    Creat a scatter plot of a 2D data contains anomaly
+    """
+    # print(int(labels[:20]))
+    # plt.scatter(data[:,0],data[:,1])
+    plt.scatter(data[:,0],data[:,1],c = labels)
+    if len(title) > 0:
+        plt.title(title)
+    plt.show()
+
+def plot_data_2d(data, labels):
+    """
+    This function creates a 2D Visualization of the input dataset and color with labels.
+    Here I use PCA to downsize the multivariate input data into 2-Dimensions.
+    Note: the input data has a shape of m*n, where m is the sample size and n is # of dimensions
+    """
+    n_components = 2
+    # Compute PCA with training dataset
+    data_encoded,n,m = pca_all_processes(data,labels,n_components,decode = False)
+    
+    # Create a Scatterplot of the entire encoded data
+    scatter_plot_anomaly(data_encoded, labels,'Scatterplot of the entire dataset')
+    # Create multiple scatterplots of the subsets of the encoded data
+    plot_data_subsets_2d(data_encoded,labels)
+    
+    
+def plot_data_subsets_2d(data, labels):
+    """
+    This function takes a few subsets of data and creates scatterplots of each of them
+    
+    """
+    # Shuffle the index
+    ind = np.hstack(range(len(labels)))
+    shuffle(ind)
+    data_shuffled = data[ind]
+    labels_shuffled = labels[ind]
+    
+    step_size = 500  # Number of points contained in each plot
+    
+    # Create figure with 5x5 sub-plots.
+    fig, axes = plt.subplots(3, 3,figsize=(15,15))
+    fig.subplots_adjust(hspace=0.1, wspace=0.01)
+
+    for i, ax in enumerate(axes.flat): 
+        start = i*step_size
+        end = (i+1)*step_size
+        data_subset = data_shuffled[start:end,:] # Get a subset of data with size 500 
+        labels_subset = labels_shuffled[start:end] # Get the corresponding labels 
+        ax.scatter(data_subset[:,0],data_subset[:,1],c = labels_subset)
+        ax.set_title('Scatterplot of ' + str(step_size) + " sample points (No." + str(i+1)+")")
+        # Remove ticks from the plot.
+        ax.set_xticks([])
+        ax.set_yticks([])
+    
+    plt.show()        
