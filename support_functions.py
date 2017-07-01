@@ -433,7 +433,7 @@ def train_test_with_reconstruction_error(data_original_train, data_decoded_train
     print("Testing Results:")
     eval_with_test(preds, labels_test_ranked, k)
 
-def train_test_with_gaussian(data_train, data_test, labels_train, labels_test):
+def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k):
     """
     Factorize the training and testing process of the Multivariate Gaussian-based method
     """
