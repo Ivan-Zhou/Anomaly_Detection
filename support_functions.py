@@ -233,7 +233,7 @@ def select_threshold_distance(edistance, yval,r, k=10, to_print = False):
 
     return best_epsilon
 
-def select_threshold_probability(p, yval,k=10, to_print = False):  
+def select_threshold_probability(p, yval, k=10, to_print = False):  
     """
     This function finds the best threshold value to detect the anomaly given the PDF values and True label Values
     p: probability given by the Multivariate Gaussian Model
@@ -316,19 +316,22 @@ def eval_with_test(Preds, Labels, k = 10):
     # Find Recall, Precision, F score
     Recall, Precision, F = evaluate_pred(Preds, Labels)
     # Find the R-Precision
-    RPrec = find_r_prec(Preds, Labels)
+    RPrec,R = find_r_prec(Preds, Labels)
     # Find Precision k
     PrecK = find_prec_k(Preds, Labels,k)
     print("Precision: {0:.1f}%".format(Precision * 100))
     print("Recall: {0:.1f}%".format(Recall * 100))
     print("F-score: {0:.1f}%".format(F * 100))
-    print("R-Precision: {0:.1f}%".format(PrecK * 100))
+    print("R-Precision (# R = " + str(R) +  "): {0:.1f}%".format(RPrec * 100))
     print("Precision@" + str(k) +": {0:.1f}%".format(PrecK * 100))
 
 def find_r_prec(Preds, Labels):
     """"
     Function to compute R-Precision: average precision for the first n results, where n = # relevant results (anomaly)
     """
+    R = sum(Labels) # Total number of relevant data points (anomaly)
+    RPrec = find_prec_k(Preds, Labels, R) # Use the find precision-k function to compute R-Precision
+    return RPrec, R
 
 def find_prec_k(Preds, Labels,k):
     """
@@ -426,11 +429,9 @@ def train_test_with_reconstruction_error(data_original_train, data_decoded_train
     preds = np.zeros(labels_test.shape) # Initialization
     preds[dist_test_ranked > threshold_error] = 1
 
-    # Get the number of actual anomaly for the precision-k test
-    k_test = sum(labels_test)
     # Evaluate the Detector with Testing Data
     print("Testing Results:")
-    eval_with_test(preds, labels_test_ranked, k_test)
+    eval_with_test(preds, labels_test_ranked, k)
 
 def train_test_with_gaussian(data_train, data_test, labels_train, labels_test):
     """
@@ -447,11 +448,9 @@ def train_test_with_gaussian(data_train, data_test, labels_train, labels_test):
     # Plot the Probability with labels
     plot_scatter_with_labels(p_train, labels_train,'Gaussian Probability')
 
-    # Get the number of actual anomaly for the precision-k test
-    k_train = sum(labels_train)
     # Train the Anomaly Detector
     print("Training Results:")
-    threshold_gaussian  = select_threshold_probability(p_train, labels_train,k_train,to_print = True)
+    threshold_gaussian  = select_threshold_probability(p_train, labels_train, k, to_print = True)
     print()
 
     ## Testing
@@ -467,6 +466,5 @@ def train_test_with_gaussian(data_train, data_test, labels_train, labels_test):
     preds = np.zeros(labels_test_ranked.shape) # Initialization
     preds[p_test_ranked < threshold_gaussian] = 1 # If the probability is smaller than the threshold, marked as anomaly
 
-    k_test = sum(labels_test)
     # Evaluate the Detector with Testing Data
-    eval_with_test(preds, labels_test_ranked, k_test)
+    eval_with_test(preds, labels_test_ranked, k)
