@@ -526,3 +526,41 @@ def plot_data_subsets_2d(data, labels):
         ax.set_yticks([])
     
     plt.show()        
+
+def plot_heatmap_of_cov(data):
+    """
+    This function plots a heatmap of the covariance matrix of the input data
+    Note: the data is of the size m*n, where m is the sample size and n is the number of dimensions
+    """
+    print('Description of the data: ')
+    print('# Data Points: ' + str(data.shape[0]))
+    print('# Dimensions: ' + str(data.shape[1]))
+    data_cov = np.cov(data,rowvar=0) # Compute the covariance of each dimensions across rows
+    plot_heatmap(data_cov,'Heatmap of the covariance of the entire matrix')
+    plot_heatmap_of_cov_by_segments(data)
+    
+
+def plot_heatmap_of_cov_by_segments(data):
+    """
+    This function aims to plots multiple heatmaps of the covariance of the input data by segments.
+    It selects a few columns each time, compute the covariance, and plot the heatmap.
+    Note: the data is of the size m*n, where m is the sample size and n is the number of dimensions
+    """
+    n_dimensions = data.shape[1] # Number of dimensions = # columns
+    for i in range(0, n_dimensions, 20):
+        end = min(i+20,n_dimensions) # We cannot extract more dimensions than the total number
+        data_cov_seg = np.cov(data[i:end,i:end],rowvar = 0)
+        subtitle = 'Heatmap of covariance: Dimensions ' + str(i) + ' to '+ str(end)
+        plot_heatmap(data_cov_seg,subtitle)
+        
+    
+def plot_heatmap(data,title = ''):
+    """
+    This function plots a heatmap with the input data matrix 
+    """
+    plt.imshow(data, cmap='jet', interpolation='nearest') # Create a heatmap
+    plt.colorbar() # Add a Color Bar by the side
+    if len(title) > 0:
+        plt.title(title)
+    plt.show()
+    
