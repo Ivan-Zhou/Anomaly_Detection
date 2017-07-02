@@ -13,6 +13,7 @@ from random import shuffle
 from keras.layers import Input, Dense
 from keras.models import Model
 from PCA_Functions import *
+from sklearn.model_selection import KFold
 
 def plot_images(imgs,labels):
     """
@@ -450,25 +451,30 @@ def train_test_with_reconstruction_error(data_original_train, data_decoded_train
     print("Testing Results:")
     eval_with_test(preds, labels_test_ranked, k)
 
-def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k,whitened = False, lam = 0,plot_comparison = False):
+def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k,whitened = False, lam = 0,folds = 10, plot_comparison = False):
     """
     Factorize the training and testing process of the Multivariate Gaussian-based method.
     Note:
     - whitened: a trigger to whitening the covariance
     - lam: the coefficient lambda for whitening the covariance
+    - folds: number of folds used in k-fold cross validation
     - plot_comparison: trigger to plot the original covariance and whitened covariance for comparison
     """
     ## Training
-    # Get Gaussian Distribution Model with the Training Data
-    # Note: fit_multivariate_gaussian() is my own coded function
-    dist = fit_multivariate_gaussian(data_train,whitened, lam, plot_comparison)
+    if whitened:
+        # Apply Cross-Validation to find the best lambda
+        dist = fit_gaussian_with_whiten_and_cv(data_train,labels_train,folds,k)
+    else:
+        # Get Gaussian Distribution Model with the Training Data
+        # Note: fit_multivariate_gaussian() is my own coded function
+        dist = fit_multivariate_gaussian(data_train,whitened, plot_comparison)
 
     # Get Probability of being Anomaly vs. being Normal
     p_train = dist.pdf(data_train)   # Probability of Being Normal
 
+    ## Print training results
     # Plot the Probability with labels
     plot_scatter_with_labels(p_train, labels_train,'Gaussian Probability')
-
     # Train the Anomaly Detector
     print("Training Results:")
     threshold_gaussian  = select_threshold_probability(p_train, labels_train, k, to_print = True)
@@ -489,6 +495,42 @@ def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k
 
     # Evaluate the Detector with Testing Data
     eval_with_test(preds, labels_test_ranked, k)
+
+def fit_gaussian_with_whiten_and_cv(data,labels,folds,k):
+    """
+    Here we fit a multivariate gaussian with whitening and cross validation
+    """
+    kf = KFold(n_splits = folds)
+    best_f1_avg = 0 # Initialize the best average f1 score
+    best_lam = -1 # Intialize the best lambda 
+    
+    for lam in range(0,0.999,0.09): # Test 
+        f1_list = []
+        for train_index, test_index in kf.split(imgs_train_encoded):
+            dist = fit_multivariate_gaussian(data[train_index],lam, whitened=True) # Use whitened covariance to fit a multivariate gaussian distribution
+            data_test = data[test_index] # Get the testing data
+            p_test = dist.pdf(data_test)   # Probability of Being Normal
+
+            # Sort the Images and Labels based on the Probability
+            rank_test = np.argsort(p_test) # Sort from the Smallest to the Largest
+            p_test_ranked = p_test[rank_test] # Sort the distance
+            labels_test_ranked = labels_test[rank_test] # Rank Labels
+
+            # Give Predictions
+            preds = np.zeros(labels_test_ranked.shape) # Initialization
+            preds[p_test_ranked < threshold_gaussian] = 1 # If the probability is smaller than the threshold, marked as anomaly
+
+            tp,tn,fp,fn,f1,precK = eval_prediction(preds,labels,k,rate = True)
+            
+            f1_list.append(f1)
+        f1_avg = sum(f1_list)/len(f1_list)
+
+        # Optimize to find the highest f1
+        if f1_avg > best_f1_avg:
+            best_lam = lam # Record the current lambda
+            best_f1_avg = f1_avg # Record the current target measurement
+            
+
 
 def scatter_plot_anomaly(data, labels,title = ''):
     """
