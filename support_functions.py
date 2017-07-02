@@ -147,14 +147,30 @@ def estimate_gaussian(X):
 
     return mu, cov
 
-def fit_multivariate_gaussian(data):
+def fit_multivariate_gaussian(data,whitened = False, lam = 0, plot_comparison = False):
     """
     This function is used to compute the mu and cov based on the given data, and fit a multivariate gaussian dist
     This data is given as a m*k matrix, where m represents the number of samples, and k represents the number of dimensions
     """
     mu, cov = estimate_gaussian(data)
-    dist = multivariate_normal(mean = mu, cov = cov,allow_singular=False)
+    if whitened:
+        cov_dist = whitening_cov(cov, lam, plot_comparison)
+    else:
+        cov_dist = cov # No whitening
+    dist = multivariate_normal(mean = mu, cov = cov_dist,allow_singular=False)
     return dist
+
+def whitening_cov(cov,lam,plot_comparison = False):
+    """
+    This function whitenes the covariance matrix in order to make features less correlated with one another
+    - cov: the original covariance of the original matrix
+    - lam: the coefficient lambda for whitening the covariance
+    - plot_comparison: trigger to plot the original covariance and whitened covariance for comparison
+    """
+    cov_whitened = lam*cov + (1-lam)*np.identity(cov.shape[0])
+    if plot_comparison:
+        compare_whiten_cov(cov,cov_whitened) # Plot for comparison
+    return cov_whitened
 
 def eval_prediction(pred,yval,k, rate = False):
     """
@@ -434,14 +450,18 @@ def train_test_with_reconstruction_error(data_original_train, data_decoded_train
     print("Testing Results:")
     eval_with_test(preds, labels_test_ranked, k)
 
-def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k):
+def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k,whitened = False, lam = 0,plot_comparison = False):
     """
-    Factorize the training and testing process of the Multivariate Gaussian-based method
+    Factorize the training and testing process of the Multivariate Gaussian-based method.
+    Note:
+    - whitened: a trigger to whitening the covariance
+    - lam: the coefficient lambda for whitening the covariance
+    - plot_comparison: trigger to plot the original covariance and whitened covariance for comparison
     """
     ## Training
     # Get Gaussian Distribution Model with the Training Data
     # Note: fit_multivariate_gaussian() is my own coded function
-    dist = fit_multivariate_gaussian(data_train)
+    dist = fit_multivariate_gaussian(data_train,whitened, lam, plot_comparison)
 
     # Get Probability of being Anomaly vs. being Normal
     p_train = dist.pdf(data_train)   # Probability of Being Normal
@@ -537,7 +557,7 @@ def plot_heatmap_of_cov(data):
     print('# Dimensions: ' + str(data.shape[1]))
     data_cov = np.cov(data,rowvar=0) # Compute the covariance of each dimensions across rows
     plot_heatmap(data_cov,'Heatmap of the covariance of the entire matrix')
-    plot_heatmap_of_cov_by_segments(data)
+    # plot_heatmap_of_cov_by_segments(data)
     
 
 def plot_heatmap_of_cov_by_segments(data):
@@ -564,3 +584,19 @@ def plot_heatmap(data,title = ''):
         plt.title(title)
     plt.show()
     
+def compare_whiten_cov(cov,cov_whitened):
+    """
+    Plot the heatmatp of the covariance matrix vs. the whitened covariance side by side for comparison
+    """
+    plt.figure(figsize=(15,8))
+    plt.subplot(1,2,1)
+    plt.imshow(cov, cmap='jet', interpolation='nearest') # Create a heatmap
+    plt.title('Plot of the original Covariance Matrix')
+    plt.colorbar() # Add a Color Bar by the side
+
+    plt.subplot(1,2,2)
+    plt.imshow(cov_whitened, cmap='jet', interpolation='nearest') # Create a heatmap
+    plt.title('Plot of the whitened Covariance Matrix')
+    plt.colorbar() # Add a Color Bar by the side
+
+    plt.show()
