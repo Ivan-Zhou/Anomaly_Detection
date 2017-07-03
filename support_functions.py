@@ -672,12 +672,30 @@ def plot_heatmap(data,title = ''):
     if len(title) > 0:
         plt.title(title)
     plt.show()
+
+def plot_2datasets(data1,data2,title1 = '',title2 = ''):
+    """
+    This function plots the heatmaps of two input data matrix side by side 
+    """
+    plt.figure(figsize=(15,8))
+    plt.subplot(1,2,1)
+    plt.imshow(data1, cmap='jet', interpolation='nearest') # Create a heatmap
+    if len(title1) > 0:
+        plt.title(title1)
+    plt.colorbar() # Add a Color Bar by the side
+
+    plt.subplot(1,2,2)
+    plt.imshow(data2, cmap='jet', interpolation='nearest') # Create a heatmap
+    if len(title2) > 0:
+        plt.title(title2)
+    plt.colorbar() # Add a Color Bar by the side
+    plt.show()
     
 def compare_whiten_cov(cov,cov_whitened):
     """
     Plot the heatmatp of the covariance matrix vs. the whitened covariance side by side for comparison
     """
-    plt.figure(figsize=(15,8))
+    plt.figure(figsize=(8,8))
     plt.subplot(1,2,1)
     plt.imshow(cov, cmap='jet', interpolation='nearest') # Create a heatmap
     plt.title('Plot of the original Covariance Matrix')
@@ -688,4 +706,31 @@ def compare_whiten_cov(cov,cov_whitened):
     plt.title('Plot of the whitened Covariance Matrix')
     plt.colorbar() # Add a Color Bar by the side
 
+    plt.show()
+
+
+def compare_var(data, data_pca,to_print = False):
+    '''
+    This function compare the % variance achieved with the PCA Encoding 
+    '''
+    var_retained = (np.var(data_pca)*data_pca.shape[1])/(np.var(data)*data.shape[1])
+    if to_print:
+        print("{0:.1f}% variance is retained with the current PCA Encoding.".format(var_retained * 100))
+    return var_retained
+
+def evaludate_pc(data,labels):
+    '''
+    Evaluate the % variance retained with different number of pc
+    '''
+    var_retained_list = []
+    n_components_list = []
+    for n_components in range(0,data.shape[1]+1):
+        data_pca,pca_matrix, component_mean = pca_all_processes(data,labels,n_components)
+        var_retained = compare_var(data, data_pca)
+        var_retained_list.append(var_retained)
+        n_components_list.append(n_components)
+    plt.plot(n_components_list,var_retained_list)
+    plt.xlabel('# Components Retained after encoding')
+    plt.ylabel('Varaince Retained after encoding')
+    plt.title('Evaluation of the number of PC retained in PCA')
     plt.show()
