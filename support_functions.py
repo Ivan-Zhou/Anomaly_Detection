@@ -186,6 +186,9 @@ def eval_prediction(pred,yval,k, rate = False):
     precision = true_positive / max(1,true_positive + false_positive)
     recall = true_positive / max(1,true_positive + false_negative)
     f1 = (2 * precision * recall) / max(1,precision + recall)
+    # Find the R-Precision
+    RPrec,R = find_r_prec(pred, yval)
+    # Find Precision k
     PrecK = find_prec_k(pred, yval,k)
     # A more direct version of f1 is f1 = 2*tp/(2*tp+fn+fp)
     
@@ -196,9 +199,9 @@ def eval_prediction(pred,yval,k, rate = False):
         tnr = true_negative/n_n
         fpr = false_positive/n_n
         fnr = false_negative/n_p
-        return tpr,tnr,fpr,fnr,f1,PrecK
+        return tpr,tnr,fpr,fnr,f1,RPrec,PrecK
     else:
-        return true_positive,true_negative,false_positive,false_negative,f1,PrecK
+        return true_positive,true_negative,false_positive,false_negative,f1,RPrec,PrecK
 
 def find_euclidean_distance(matrix1,matrix2):
     """
@@ -220,10 +223,6 @@ def select_threshold_distance(edistance, yval,r, k=10, to_print = False):
     # Initialize the Metrics: only the selected will be used in optimization
     best_epsilon = 0
     best_f1 = 0
-    # best_tp = 0
-    # best_fp = 0
-    # best_fn = 0
-    # best_precK = 0 # Precision at k
 
     # Sort the edistance and yval based on pval from high to low (in order to measure the Precision at K)
     rank = np.argsort(-edistance) # Sort from the Largest to the Smallest
@@ -232,17 +231,17 @@ def select_threshold_distance(edistance, yval,r, k=10, to_print = False):
     yval_ranked = yval[rank] # Sort the yval with the same order
 
     # Step Size
-    step = (dist_ranked.max() - dist_ranked.min()) / 1000
+    step = (dist_ranked.max() - dist_ranked.min()) / 100
 
     for epsilon in np.arange(dist_ranked.min(), dist_ranked.max(), step):
         preds_ranked = dist_ranked > epsilon # If the distance is larger than the threshold, it will be identified as an anomaly
 
-        tp,tn,fp,fn,f1,precK = eval_prediction(preds_ranked,yval_ranked,k,rate = True)
+        tp,tn,fp,fn,f1,RPrec,precK = eval_prediction(preds_ranked,yval_ranked,k,rate = True)
 
         # Optimize to find the highest precision at k
         if f1 > best_f1:
-            best_epsilon = epsilon # Record the current epsilon
-            best_f1 = f1 # Record the current target measurement: f1
+            best_f1 = f1
+            best_epsilon = epsilon
 
     # Get the best measurement with the best threshold
     if to_print: # Print out the result
@@ -262,10 +261,6 @@ def select_threshold_probability(p, yval, k=10, to_print = False):
     # Initialize the Metrics: only the selected will be used in optimization
     best_epsilon = 0
     best_f1 = 0
-    # best_tp = 0
-    # best_fp = 0
-    # best_fn = 0
-    # best_precK = 0 # Precision at k
 
     # Sort the edistance and yval based on pval from high to low (in order to measure the Precision at K)
     rank = np.argsort(p) # Sort from the smallest to the largest
@@ -274,17 +269,17 @@ def select_threshold_probability(p, yval, k=10, to_print = False):
     yval_ranked = yval[rank] # Sort the yval with the same order
 
     # Step Size
-    step = (p_ranked.max() - p_ranked.min()) / 1000
+    step = (p_ranked.max() - p_ranked.min()) / 100
 
     for epsilon in np.arange(p_ranked.min(), p_ranked.max(), step):
         preds_ranked = p_ranked < epsilon # If the probability is smaller than the threshold, it will be identified as an anomaly
 
-        tp,tn,fp,fn,f1,precK = eval_prediction(preds_ranked,yval_ranked,k,rate = True)
+        tp,tn,fp,fn,f1,RPrec,precK = eval_prediction(preds_ranked,yval_ranked,k,rate = True)
 
         # Optimize to find the highest precision at k
         if f1 > best_f1:
-            best_epsilon = epsilon # Record the current epsilon
-            best_f1 = f1 # Record the current target measurement: f1
+            best_f1 = f1
+            best_epsilon = epsilon
 
     # Get the best measurement with the best threshold
     if to_print: # Print out the result
@@ -444,14 +439,14 @@ def train_test_with_reconstruction_error(data_original_train, data_decoded_train
     labels_test_ranked = labels_test[rank_test]
 
     # Give Predictions
-    preds = np.zeros(labels_test.shape) # Initialization
+    preds = np.zeros(labels_test_ranked.shape) # Initialization
     preds[dist_test_ranked > threshold_error] = 1
 
     # Evaluate the Detector with Testing Data
     print("Testing Results:")
     eval_with_test(preds, labels_test_ranked, k)
 
-def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k,whitened = False, lam = 0,folds = 10, plot_comparison = False):
+def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k,whitened = False, lam = 0,folds = 2, plot_comparison = False):
     """
     Factorize the training and testing process of the Multivariate Gaussian-based method.
     Note:
@@ -500,15 +495,31 @@ def fit_gaussian_with_whiten_and_cv(data,labels,folds,k):
     """
     Here we fit a multivariate gaussian with whitening and cross validation
     """
-    kf = KFold(n_splits = folds)
-    best_f1_avg = 0 # Initialize the best average f1 score
-    best_lam = -1 # Intialize the best lambda 
+    kf = KFold(n_splits = folds) # Create multiple folds for cross validation (cv)
+    best_rprec_avg = 0 # Initialize the best average RPrec 
+    best_f1_avg = -1 # Intialize a list to record the best lambda 
+    lam_list = [] # list to record the lambda - for the plot
+    f1_avg_list = []
+    rprec_avg_list = [] # list to record the average RPrec corresponding to each lambda - used for the plot
+    preck_avg_list = []
     
-    for lam in range(0,0.999,0.09): # Test 
+    for lam in frange(0,0.999,0.09): # Loop through each possible lambda (discretized)
         f1_list = []
-        for train_index, test_index in kf.split(imgs_train_encoded):
-            dist = fit_multivariate_gaussian(data[train_index],lam, whitened=True) # Use whitened covariance to fit a multivariate gaussian distribution
+        rprec_list = [] # Initialize a list to record the f1 score of each training & testing set combination
+        preck_list = [] 
+        for train_index, test_index in kf.split(data):
+            
+            # Training
+            # training Use whitened covariance to fit a multivariate gaussian distribution
+            data_train = data[train_index] # Get training set data
+            labels_train = labels[train_index] # Get training set labels
+            dist = fit_multivariate_gaussian(data_train,whitened=True,lam = lam) # Fit in a distribution 
+            p_train = dist.pdf(data_train)   # Probability of Being Normal
+            threshold_gaussian  = select_threshold_probability(p_train, labels_train, k, to_print = False) # Find the best threshold with the training set
+
+            # Testing
             data_test = data[test_index] # Get the testing data
+            labels_test = labels[test_index]
             p_test = dist.pdf(data_test)   # Probability of Being Normal
 
             # Sort the Images and Labels based on the Probability
@@ -520,17 +531,53 @@ def fit_gaussian_with_whiten_and_cv(data,labels,folds,k):
             preds = np.zeros(labels_test_ranked.shape) # Initialization
             preds[p_test_ranked < threshold_gaussian] = 1 # If the probability is smaller than the threshold, marked as anomaly
 
-            tp,tn,fp,fn,f1,precK = eval_prediction(preds,labels,k,rate = True)
-            
-            f1_list.append(f1)
-        f1_avg = sum(f1_list)/len(f1_list)
+            tp,tn,fp,fn,f1,RPrec,precK = eval_prediction(preds,labels_test_ranked,k,rate = True)
+            f1_list.append(f1) # Save the f1 score of the current training & testing combination
+            preck_list.append(precK)
+            rprec_list.append(RPrec)
+
+        f1_avg = sum(f1_list)/len(f1_list) # The average f1 score for the current lambda
+        rprec_avg = sum(rprec_list)/len(rprec_list)
+        preck_avg = sum(preck_list)/len(preck_list)
+
+        # Save the current lambda and rprec_avg
+        lam_list.append(lam)
+        f1_avg_list.append(f1_avg)
+        rprec_avg_list.append(rprec_avg)
+        preck_avg_list.append(preck_avg)
 
         # Optimize to find the highest f1
         if f1_avg > best_f1_avg:
             best_lam = lam # Record the current lambda
             best_f1_avg = f1_avg # Record the current target measurement
-            
+        print('Finish evaluate Lambda: ' + str(lam))
 
+    plt.figure(figsize=(15,8))
+    plt.subplot(1,2,1)
+    plt.plot(lam_list, rprec_avg_list)
+    plt.xlabel('Lambda')
+    plt.ylabel('R-Precision')
+    plt.title('R-Precision Achieved at Different Lambda')
+
+    plt.subplot(1,2,2)
+    plt.plot(lam_list, preck_avg_list)
+    plt.xlabel('Lambda')
+    plt.ylabel('Precision@'+str(k))
+    plt.title('Precision@' +str(k)+' Achieved at Different Lambda')
+
+    plt.show()
+
+    # Print the best lambda
+    print('The best lambda selected from the cross validation is: ' + str(best_lam))
+    # Use the optimal lambda and the entire data set to find the optimal dist
+    dist = fit_multivariate_gaussian(data, whitened = True,lam = best_lam)
+    return dist
+
+def frange(start, stop, step):
+    i = start
+    while i < stop:
+        yield i
+        i += step
 
 def scatter_plot_anomaly(data, labels,title = ''):
     """

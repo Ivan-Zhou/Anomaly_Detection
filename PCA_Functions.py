@@ -152,3 +152,36 @@ def pca_all_processes(data,labels,n_components, plot_eigenfaces_bool = False,dec
     else:
         data_encoded = encode_pca(data, component_mean, pca_matrix, n_components)
         return data_encoded, pca_matrix, component_mean
+
+def plot_compare_after_reconst(img_matrix_reconst,imgs_matrix,height,width):
+    """
+    This function compares the images reconstructed after encoding & decoding with their original one.
+    The shape of both image matrice in the input is m*n, where n is the number of components, 
+    and m is the number of images.
+    """
+    # Permutate through the image index
+    ind = np.random.permutation(imgs_matrix.shape[0])
+
+    # Create figure with multiple sub-plots.
+    fig, axes = plt.subplots(4, 4,figsize=(15,15))
+    fig.subplots_adjust(hspace=0.1, wspace=0.01)
+
+    # Initialize the counter of images
+    image_count = 0 
+
+    for i, ax in enumerate(axes.flat): 
+        if i % 2 == 0:
+            image_count += 1
+            ax.imshow(imgs_matrix[ind[i],:].reshape(height,width), plt.cm.gray)
+            xlabel = "Example {0}: Original Image".format(image_count)
+        else:
+            ax.imshow(img_matrix_reconst[ind[i-1],:].reshape(height,width), plt.cm.gray)
+            xlabel = "Example {0}: Reconstructed Image".format(image_count)
+        # Show the classes as the label on the x-axis.
+        ax.set_xlabel(xlabel)
+
+        # Remove ticks from the plot.
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    plt.show()
