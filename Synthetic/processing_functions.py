@@ -32,3 +32,11 @@ def read_data():
     labels_test = labels[test_ind]
 
     return data,labels, data_train, data_test, labels_train, labels_test
+
+def get_deep_model_config():
+    """
+    A class to manage the model configuration
+    """
+    encoder_layers_size = [16, 8,4]
+    decoder_layers_size = [8,16]
+    return encoder_layers_size, decoder_layers_size

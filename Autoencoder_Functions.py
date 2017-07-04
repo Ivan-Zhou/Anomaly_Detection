@@ -6,7 +6,7 @@ from support_functions import *
 from keras.layers import Input, Dense
 from keras.models import Model
 
-def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,epochs_size = 80, batch_size = 256,save_model = True):
+def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,epochs_size = 80, batch_size = 256,image = True, save_model = True):
     """
     data is a matrix of size m*n, where m is the sample size, and n is the dimenions
     labels is a vector of length n
@@ -20,6 +20,7 @@ def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,epoch
     # Prepare the input
     # Select only the Normal Image Dataset
     data_normal = data[labels == 0]
+
     # Split the images and labels
     # By default: 80% in training and 20% in testing
     train_ind, test_ind = perm_and_split(len(data_normal))
@@ -27,11 +28,9 @@ def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,epoch
     x_test = data_normal[test_ind,:]
 
     # Normalize the Data
-    x_train = x_train.astype('float32') / 255.
-    x_test = x_test.astype('float32') / 255.
-    # x_train = x_train.reshape((len(x_train), np.prod(x_train.shape[1:])))
-    # x_test = x_test.reshape((len(x_test), np.prod(x_test.shape[1:])))
-
+    if image:
+        x_train = x_train.astype('float32') / 255.
+        x_test = x_test.astype('float32') / 255.
     # Run the model
     autoencoder.fit(x_train, x_train,
                     epochs = epochs_size,
@@ -89,23 +88,25 @@ def create_hidden_layers(layers_size, inputs, activation_type = 'relu'):
             model = Dense(layers_size[i], activation=activation_type)(model)  
     return model
 
-def reconstruct_with_autoencoder(autoencoder,data,visual =False,height = 0, width = 0):
+def reconstruct_with_autoencoder(autoencoder,data,visual =False,height = 0, width = 0,image = True):
     """
     Function to reconstruct the data with trained autoencoder
     """
-    data_normal = data.astype('float32') / 255. # Normalize the Data
+    if image:
+        data = data.astype('float32') / 255. # Normalize the Data
     # Load into the model and get the processed output
-    data_reconstructed = autoencoder.predict(data_normal)
+    data_reconstructed = autoencoder.predict(data)
     if visual:
         # Plot the original images and their reconstructed version for comparison
         plot_compare_after_reconst(data_reconstructed,data,height,width)
     return data_reconstructed
 
-def encode_data(encoder,data):
+def encode_data(encoder,data,image = True):
     """
     To encode hte data with the trained encoder
     """
-    data_normal = data.astype('float32') / 255. # Normalize the Data
+    if image:
+        data = data.astype('float32') / 255. # Normalize the Data
     # Load into the model and get the processed output
-    data_encoded = encoder.predict(data_normal)
+    data_encoded = encoder.predict(data)
     return data_encoded
