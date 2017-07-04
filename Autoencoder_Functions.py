@@ -5,8 +5,9 @@ from support_functions import *
 
 from keras.layers import Input, Dense
 from keras.models import Model
+from keras.layers import Dropout
 
-def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,epochs_size = 80, batch_size = 256,image = True, save_model = True):
+def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,epochs_size = 80, batch_size = 256,dropout =0,image = True, save_model = True):
     """
     data is a matrix of size m*n, where m is the sample size, and n is the dimenions
     labels is a vector of length n
@@ -15,7 +16,7 @@ def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,epoch
     """
     # Generate and Compile a Deep Autoencoder and its encoder
     data_dimensions = data.shape[1] # The dimension = # columns
-    autoencoder,encoder = compile_autoencoder(data_dimensions,encoder_layers_size,decoder_layers_size)
+    autoencoder,encoder = compile_autoencoder(data_dimensions,encoder_layers_size,decoder_layers_size,dropout = dropout)
 
     # Prepare the input
     # Select only the Normal Image Dataset
@@ -43,7 +44,7 @@ def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,epoch
         autoencoder.save('model_autoencoder.h5')
     return autoencoder,encoder
 
-def compile_autoencoder(data_length, encoder_layers_size,decoder_layers_size):
+def compile_autoencoder(data_length, encoder_layers_size,decoder_layers_size,dropout = 0):
     '''
     Function to construct and compile the deep autoencoder, then return the model
     Input:
@@ -58,12 +59,14 @@ def compile_autoencoder(data_length, encoder_layers_size,decoder_layers_size):
     n_decoder_layers = len(decoder_layers_size)
 
     # "encoded" is the encoded representation of the input
-    encoded = create_hidden_layers(encoder_layers_size,inputs)
+    encoded = create_hidden_layers(encoder_layers_size,inputs,dropout = dropout)
     
     # "decoded" is the lossy reconstruction of the input
-    decoded = create_hidden_layers(decoder_layers_size,encoded)
+    decoded = create_hidden_layers(decoder_layers_size,encoded,dropout = dropout)
 
     # The last output layer: same size as the input
+    if dropout>0:
+        decoded = Dropout(dropout)(decoded)
     decoded = Dense(data_length, activation='sigmoid')(decoded)
     
     # The autoencoder model maps an input to its reconstruction
@@ -75,15 +78,16 @@ def compile_autoencoder(data_length, encoder_layers_size,decoder_layers_size):
     
     return autoencoder,encoder
 
-def create_hidden_layers(layers_size, inputs, activation_type = 'relu'):
+def create_hidden_layers(layers_size, inputs, activation_type = 'relu',dropout = 0):
     """
-    This function factorize the creation of hidden layers with Keras. 
-    The size of 
+    This function factorize the creation of hidden layers with Keras.
     """
     model = Dense(int(layers_size[0]),activation = activation_type)(inputs) # The first layer of the model
     n_hidden_layers = len(layers_size) # Find the number of hidden layers in the model (given as an input)
     if n_hidden_layers > 1:
         for i in range(1,n_hidden_layers):
+            if dropout> 0:
+                model = Dropout(dropout)(model)
             model = Dense(int(layers_size[i]), activation=activation_type)(model)  
     return model
 
@@ -111,20 +115,21 @@ def encode_data(encoder,data,image = True):
     data_encoded = encoder.predict(data)
     return data_encoded
 
-def build_enconder_layers(n_layers,data_dimensions):
+def build_encoder_layers(n_layers,multiplier,data_dimensions):
     """
     Build layers structure of the encoders
     n_layers: number of layers in the encoders
+    multiplier: change factor in layer sizes 
     data_dimensions: # dimensions in the original data
     """
     encoder_layers_size = np.zeros(n_layers) # Initialization
     layer_size = data_dimensions
     for n in range(0,n_layers):
-        layer_size = int(layer_size/2) # The new layer has a half-size of the previous layer
+        layer_size = int(layer_size/multiplier) # The new layer has a half-size of the previous layer
         encoder_layers_size[n] = layer_size # Save the layer size
     return encoder_layers_size
 
-def build_decoder_layers(n_layers,encoded_dimensions):
+def build_decoder_layers(n_layers,multiplier,encoded_dimensions):
     """
     Build layer structure of the decoders
     n_layers: number of layers in the decoders; the last layer will be built based on the input data in the training function
@@ -133,6 +138,6 @@ def build_decoder_layers(n_layers,encoded_dimensions):
     decoder_layers_size = np.zeros(n_layers-1) # Initialization
     layer_size = encoded_dimensions 
     for n in range(0,n_layers - 1):
-        layer_size = int(layer_size*2)
+        layer_size = int(layer_size*multiplier)
         decoder_layers_size[n] = layer_size # save the layer size
     return decoder_layers_size
