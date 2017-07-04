@@ -17,8 +17,8 @@ def get_deep_model_config():
     """
     A class to manage the model configuration
     """
-    encoder_layers_size = [128, 64, 32]
-    decoder_layers_size = [64, 128]
+    encoder_layers_size = [500,400,200]
+    decoder_layers_size = [400,500]
     return encoder_layers_size, decoder_layers_size
     
 def read_process_data(data_path, anomaly_digit):

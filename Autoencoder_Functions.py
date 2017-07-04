@@ -43,7 +43,6 @@ def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,epoch
         autoencoder.save('model_autoencoder.h5')
     return autoencoder,encoder
 
-        
 def compile_autoencoder(data_length, encoder_layers_size,decoder_layers_size):
     '''
     Function to construct and compile the deep autoencoder, then return the model
@@ -99,7 +98,8 @@ def reconstruct_with_autoencoder(autoencoder,data,visual =False,height = 0, widt
     if visual:
         # Plot the original images and their reconstructed version for comparison
         plot_compare_after_reconst(data_reconstructed,data,height,width)
-    return data_reconstructed
+    # We returned the data in the end because it is normalized when it is image type
+    return data_reconstructed, data
 
 def encode_data(encoder,data,image = True):
     """

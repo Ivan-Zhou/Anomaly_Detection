@@ -17,8 +17,7 @@ data_path = "CroppedYale/"
 imgs, labels, height, width = get_data(label_1_folder,target_folders,data_path)
 
 # Specify the model config
-encoder_layers_size = [128, 64, 32]
-decoder_layers_size = [64, 128]
+encoder_layers_size, decoder_layers_size = get_deep_model_config()
 
 # Since we only has very few images, we replicates the data 
 imgs_rep = np.tile(imgs, (300,1))
