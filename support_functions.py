@@ -322,7 +322,7 @@ def evaluate_pred(Preds, Labels):
     
     return Recall, Precision, F
 
-def eval_with_test(Preds, Labels, k = 10):
+def eval_with_test(Preds, Labels, k = 10,to_print = True):
     """
     Function to print out the metrices (for the evaluation on both the training and testing dataset)
     """
@@ -332,11 +332,14 @@ def eval_with_test(Preds, Labels, k = 10):
     RPrec,R = find_r_prec(Preds, Labels)
     # Find Precision k
     PrecK = find_prec_k(Preds, Labels,k)
-    print("Precision: {0:.1f}%".format(Precision * 100))
-    print("Recall: {0:.1f}%".format(Recall * 100))
-    print("F-score: {0:.1f}%".format(F * 100))
-    print("R-Precision (# R = " + str(R) +  "): {0:.1f}%".format(RPrec * 100))
-    print("Precision@" + str(k) +": {0:.1f}%".format(PrecK * 100))
+    if to_print:
+        print("Precision: {0:.1f}%".format(Precision * 100))
+        print("Recall: {0:.1f}%".format(Recall * 100))
+        print("F-score: {0:.1f}%".format(F * 100))
+        print("R-Precision (# R = " + str(R) +  "): {0:.1f}%".format(RPrec * 100))
+        print("Precision@" + str(k) +": {0:.1f}%".format(PrecK * 100))
+    else:
+        return Recall,Precision,F,RPrec,R,PrecK
 
 def find_r_prec(Preds, Labels):
     """"
@@ -409,7 +412,7 @@ def label_anomaly(labels_input, anomaly_digit):
     labels_anomaly[labels_input == anomaly_digit] = 1 # Mark the label of the anomaly digit as 1
     return labels_anomaly # return the newly created vector
 
-def train_test_with_reconstruction_error(data_original_train, data_decoded_train, data_original_test, data_decoded_test, labels_train, labels_test,k):
+def train_test_with_reconstruction_error(data_original_train, data_decoded_train, data_original_test, data_decoded_test, labels_train, labels_test,k,to_print = True):
     """
     Factorize the training and testing process of the Reconstruction Error-based method
     """
@@ -418,15 +421,19 @@ def train_test_with_reconstruction_error(data_original_train, data_decoded_train
     dist_train = find_euclidean_distance(data_decoded_train,data_original_train)
 
     # Plot of the reconstruction error from high to low
-    print("The higher the reconstruction error, the more likely the point will be an anomaly")
-    plot_scatter_with_labels(dist_train,labels_train,"Reconstruction Error")
+    if to_print: 
+        print("The higher the reconstruction error, the more likely the point will be an anomaly")
+        plot_scatter_with_labels(dist_train,labels_train,"Reconstruction Error")
 
     # Get the number of actual anomaly for the R-precision
     r_train = sum(labels_train)
     # Train the Anomaly Detector
-    print("Training Results:")
-    threshold_error = select_threshold_distance(dist_train, labels_train,r_train,k,to_print = True)
-    print()
+    if to_print:
+        print("Training Results:")
+        threshold_error = select_threshold_distance(dist_train, labels_train,r_train,k,to_print = to_print)
+        print()
+    else: # no print
+        threshold_error = select_threshold_distance(dist_train, labels_train,r_train,k,to_print = to_print)
 
     ## Testing
     # Find the euclidean distance between the original dataset and the decoded dataset
@@ -443,8 +450,12 @@ def train_test_with_reconstruction_error(data_original_train, data_decoded_train
     preds[dist_test_ranked > threshold_error] = 1
 
     # Evaluate the Detector with Testing Data
-    print("Testing Results:")
-    eval_with_test(preds, labels_test_ranked, k)
+    if to_print:# with print & no return
+        print("Testing Results:")
+        eval_with_test(preds, labels_test_ranked, k,to_print = to_print)
+    else: # no print & with return
+        Recall,Precision,F,RPrec,R,PrecK = eval_with_test(preds, labels_test_ranked, k,to_print = to_print)
+        return Recall,Precision,F,RPrec,R,PrecK
 
 def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k,whitened = False, lam = 0,folds = 2, plot_comparison = False):
     """

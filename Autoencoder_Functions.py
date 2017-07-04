@@ -80,11 +80,11 @@ def create_hidden_layers(layers_size, inputs, activation_type = 'relu'):
     This function factorize the creation of hidden layers with Keras. 
     The size of 
     """
-    model = Dense(layers_size[0],activation = activation_type)(inputs) # The first layer of the model
+    model = Dense(int(layers_size[0]),activation = activation_type)(inputs) # The first layer of the model
     n_hidden_layers = len(layers_size) # Find the number of hidden layers in the model (given as an input)
     if n_hidden_layers > 1:
         for i in range(1,n_hidden_layers):
-            model = Dense(layers_size[i], activation=activation_type)(model)  
+            model = Dense(int(layers_size[i]), activation=activation_type)(model)  
     return model
 
 def reconstruct_with_autoencoder(autoencoder,data,visual =False,height = 0, width = 0,image = True):
@@ -110,3 +110,29 @@ def encode_data(encoder,data,image = True):
     # Load into the model and get the processed output
     data_encoded = encoder.predict(data)
     return data_encoded
+
+def build_enconder_layers(n_layers,data_dimensions):
+    """
+    Build layers structure of the encoders
+    n_layers: number of layers in the encoders
+    data_dimensions: # dimensions in the original data
+    """
+    encoder_layers_size = np.zeros(n_layers) # Initialization
+    layer_size = data_dimensions
+    for n in range(0,n_layers):
+        layer_size = int(layer_size/2) # The new layer has a half-size of the previous layer
+        encoder_layers_size[n] = layer_size # Save the layer size
+    return encoder_layers_size
+
+def build_decoder_layers(n_layers,encoded_dimensions):
+    """
+    Build layer structure of the decoders
+    n_layers: number of layers in the decoders; the last layer will be built based on the input data in the training function
+    encoded_dimensions: # dimensions 
+    """
+    decoder_layers_size = np.zeros(n_layers-1) # Initialization
+    layer_size = encoded_dimensions 
+    for n in range(0,n_layers - 1):
+        layer_size = int(layer_size*2)
+        decoder_layers_size[n] = layer_size # save the layer size
+    return decoder_layers_size

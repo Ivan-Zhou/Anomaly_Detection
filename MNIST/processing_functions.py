@@ -55,3 +55,5 @@ def read_process_data(data_path, anomaly_digit):
     imgs_test = imgs_test.reshape(len_test,-1) # reshape to 10000 * 1024
 
     return imgs_train, imgs_test, labels_anomaly_train, labels_anomaly_test, img_height, img_width
+
+    

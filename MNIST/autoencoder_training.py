@@ -9,7 +9,6 @@ from support_functions import *
 from Autoencoder_Functions import *
 
 ## Parameters
-n_components=30 # 30 components in the encoded matrix
 anomaly_digit = 2
 
 ## Pre-Process Data
@@ -19,14 +18,12 @@ data_path = 'data/input_data/'
 imgs_train, imgs_test, labels_train, labels_test, height, width = read_process_data(data_path, anomaly_digit)
 # The length of one image vector
 img_size = height*width 
-
-# Specify the model config
-encoder_layers_size, decoder_layers_size = get_deep_model_config()
-
 # Merge the data
 imgs = np.concatenate((imgs_train, imgs_test))
 labels = np.concatenate((labels_train, labels_test))
 
-# Train and compile the model
+## Compile and Train the model
+# Specify the model config
+encoder_layers_size, decoder_layers_size = get_deep_model_config()
+# Training
 autoencoder,encoder = train_autoencoder(imgs, labels,encoder_layers_size,decoder_layers_size,save_model = True)
-
