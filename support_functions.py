@@ -611,6 +611,11 @@ def plot_data_2d(data, labels):
     # Compute PCA with training dataset
     data_encoded,n,m = pca_all_processes(data,labels,n_components,decode = False)
     
+    # Print the % variance achieved with 2 PC
+    compare_var(data,data_encoded, to_print = True)
+
+    num_data = min(len(data),4000) # We plot in maximum 4000 points
+    data_subset = data[:num_data]
     # Create a Scatterplot of the entire encoded data
     scatter_plot_anomaly(data_encoded, labels,'Scatterplot of the entire dataset')
     # Create multiple scatterplots of the subsets of the encoded data

@@ -14,7 +14,7 @@ config_target = 'Dropout Rate' # Text to be printed in the final graph
 n_layers = 5 # number of layers in decoder and encoder
 size_multiplier = 2 # Multiplier of change in layer size: must be larger than 1
 # dropout_rates = [0.1,0.2,0.3,0.4]
-dropout_rates = [0.1,0.4]
+dropout_rates = [0.0,0.1,0.2,0.3,0.4]
 epochsSize = 70 # For the training of the deep autoencoder
 k = 50 # Metric parameter: For the Precision k
 
@@ -45,6 +45,7 @@ for dropout_rate in dropout_rates:
 
     # Training
     autoencoder,encoder = train_autoencoder(imgs, labels,encoder_layers_size,decoder_layers_size,epochs_size = epochsSize,dropout = dropout_rate,save_model = False)
+    print(autoencoder.summary())
     # Notification
     print('Config #' + str(count+1) + ': Finish training!')
     
