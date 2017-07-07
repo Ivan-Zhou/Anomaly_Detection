@@ -15,9 +15,10 @@ target_folders = range(1,21) # 35
 data_path = "CroppedYale/"
 # Read image matrix (n*m), labels (vector of m), and image size
 imgs, labels, height, width = get_data(label_1_folder,target_folders,data_path)
+img_size = height*width
 
 # Specify the model config
-encoder_layers_size, decoder_layers_size = get_deep_model_config()
+encoder_layers_size, decoder_layers_size = get_deep_model_config(img_size)
 
 # Since we only has very few images, we replicates the data 
 imgs_rep = np.tile(imgs, (300,1))

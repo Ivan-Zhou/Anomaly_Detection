@@ -24,6 +24,6 @@ labels = np.concatenate((labels_train, labels_test))
 
 ## Compile and Train the model
 # Specify the model config
-encoder_layers_size, decoder_layers_size = get_deep_model_config()
+encoder_layers_size, decoder_layers_size = get_deep_model_config(img_size) # This is in the local processing_functions
 # Training
 autoencoder,encoder = train_autoencoder(imgs, labels,encoder_layers_size,decoder_layers_size,save_model = True)

@@ -141,3 +141,14 @@ def build_decoder_layers(n_layers,multiplier,encoded_dimensions):
         layer_size = int(layer_size*multiplier)
         decoder_layers_size[n] = layer_size # save the layer size
     return decoder_layers_size
+
+def set_deep_model_config(input_dimension,n_layers=4,multiplier=2):
+    """
+    This function set the layers config of encoder and decoder based on the input
+    input_dimensions: the dimensions of the input data
+    n_layers: number of layers in encoder/decoder
+    multiplier: the changing factor in layers (for example, each layer in encoder is half of the size of the previous layer)
+    """
+    encoder_layers_size = build_encoder_layers(n_layers,multiplier,input_dimension)
+    decoder_layers_size = build_decoder_layers(n_layers,multiplier,encoder_layers_size[n_layers-1])
+    return encoder_layers_size,decoder_layers_size

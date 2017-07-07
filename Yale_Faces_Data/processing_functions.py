@@ -13,6 +13,13 @@ from random import shuffle
 from keras.layers import Input, Dense
 from keras.models import Model
 
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir) 
+from support_functions import *
+from Autoencoder_Functions import *
+
 def get_data(label_1_folder,target_folders,data_path, reduce_height = 24, reduce_width = 21):
     """
     Automate the process to read and process the data
@@ -124,10 +131,12 @@ def remove_dark_img(imgs,labels,dark_pixel_threshold,light_threshold = 20):
     print (remove_count,' images are above our threshold and thus removed from the list')
     return imgs,labels,remove_count
 
-def get_deep_model_config():
+def get_deep_model_config(input_dimension):
     """
-    A class to manage the model configuration
+    A function to manage the model configuration: keep consistency so that we only need to tune the model here
+    input_dimension: the dimension of the input data
     """
-    encoder_layers_size = [128, 64, 32]
-    decoder_layers_size = [64, 128]
+    n_layers = 4 # number of layers in encoder/decoder
+    multiplier = 2 # each layer in encoder is half of the size of the previous layer
+    encoder_layers_size, decoder_layers_size = set_deep_model_config(input_dimension,n_layers=4,multiplier=2)
     return encoder_layers_size, decoder_layers_size
