@@ -134,12 +134,3 @@ def remove_dark_img(imgs,labels,dark_pixel_threshold,light_threshold = 20):
     # print (remove_count,' images are above our threshold and thus removed from the list')
     return imgs,labels,remove_count
 
-def get_deep_model_config(input_dimension):
-    """
-    A function to manage the model configuration: keep consistency so that we only need to tune the model here
-    input_dimension: the dimension of the input data
-    """
-    n_layers = 4 # number of layers in encoder/decoder
-    multiplier = 2 # each layer in encoder is half of the size of the previous layer
-    encoder_layers_size, decoder_layers_size = set_deep_model_config(input_dimension,n_layers=4,multiplier=2)
-    return encoder_layers_size, decoder_layers_size

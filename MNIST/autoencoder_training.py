@@ -1,6 +1,6 @@
 import numpy as np  
 import pandas as pd  
-from processing_functions import *
+from processing_functions_mnist import *
 import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)

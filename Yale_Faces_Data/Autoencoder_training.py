@@ -1,6 +1,6 @@
 import numpy as np  
 import pandas as pd  
-from processing_functions import *
+from processing_functions_yale_faces import *
 import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -10,11 +10,9 @@ from Autoencoder_Functions import *
 
 # Import Dataset
 # Define the images to be read and the corresponding labels
-label_1_folder = [9,21]
-target_folders = range(1,21) # 35
 data_path = "CroppedYale/"
 # Read image matrix (n*m), labels (vector of m), and image size
-imgs, labels, height, width = get_data(label_1_folder,target_folders,data_path)
+imgs, labels, height, width = get_yale_faces_data(data_path)
 img_size = height*width
 
 # Specify the model config

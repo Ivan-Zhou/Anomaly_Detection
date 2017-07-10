@@ -13,7 +13,12 @@ from random import shuffle
 from keras.layers import Input, Dense
 from keras.models import Model
 from PCA_Functions import *
+from Autoencoder_Functions import *
 from sklearn.model_selection import KFold
+
+from keras.layers import Input, Dense
+from keras.models import Model
+from keras.models import load_model
 
 def plot_images(imgs,labels):
     """
@@ -831,4 +836,31 @@ def detection_with_pca_gaussian(data_train, data_test,labels_train,labels_test,n
         train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,k,to_print=to_print)
     else:  # Return results in numeric values
         Recall,Precision,F,RPrec,R,PrecK = train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,k,to_print=to_print)
+        return Recall,Precision,F,RPrec,R,PrecK
+
+def detection_with_autoencoder_reconstruction_error(data_train, data_test,labels_train,labels_test,k,model_path,is_image_data=True,to_print = False,height=0,width=0):
+    """
+    Function to apply anomaly detection with Autoencoder and Reconstruction Error
+    model_path: path that stores the model
+    is_image_data: boolean to indicate if the data is of image type
+    """
+    # Generate and Compile a Deep Autoencoder
+    # Specify the model config
+    data_dimensions=data_train.shape[1] # No.dimensions in the data
+    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions)
+    # Extract the saved model
+    autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_layers_size, decoder_layers_size) 
+    autoencoder = load_model(model_path) # Load the saved model
+
+    # Reconstruct the training data with autoencoder
+    data_train_reconstructed,data_train = reconstruct_with_autoencoder(autoencoder,data_train,visual =to_print,height = height, width = width,image=is_image_data)
+
+    # Reconstruct the testing data
+    data_test_reconstructed,data_test = reconstruct_with_autoencoder(autoencoder,data_test,visual =False,height = height, width = width,image=is_image_data)
+
+    # Anomaly Detection with Reconstruction Error
+    if to_print: # Print result
+        train_test_with_reconstruction_error(data_train, data_train_reconstructed, data_test, data_test_reconstructed, labels_train, labels_test,k,to_print = to_print)
+    else:  # Return results in numeric values
+        Recall,Precision,F,RPrec,R,PrecK = train_test_with_reconstruction_error(data_train, data_train_reconstructed, data_test, data_test_reconstructed, labels_train, labels_test,k,to_print = to_print)
         return Recall,Precision,F,RPrec,R,PrecK

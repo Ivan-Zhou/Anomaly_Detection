@@ -101,6 +101,7 @@ def reconstruct_with_autoencoder(autoencoder,data,visual =False,height = 0, widt
     data_reconstructed = autoencoder.predict(data)
     if visual:
         # Plot the original images and their reconstructed version for comparison
+        print("Below are examples of the Reconstructed Data with Deep Autoencoder")
         plot_compare_after_reconst(data_reconstructed,data,height,width)
     # We returned the data in the end because it is normalized when it is image type
     return data_reconstructed, data
@@ -152,3 +153,13 @@ def set_deep_model_config(input_dimension,n_layers=4,multiplier=2):
     encoder_layers_size = build_encoder_layers(n_layers,multiplier,input_dimension)
     decoder_layers_size = build_decoder_layers(n_layers,multiplier,encoder_layers_size[n_layers-1])
     return encoder_layers_size,decoder_layers_size
+
+def get_deep_model_config(input_dimension):
+    """
+    A function to manage the model configuration: keep consistency so that we only need to tune the model here
+    input_dimension: the dimension of the input data
+    """
+    n_layers = 4 # number of layers in encoder/decoder
+    multiplier = 2 # each layer in encoder is half of the size of the previous layer
+    encoder_layers_size, decoder_layers_size = set_deep_model_config(input_dimension,n_layers=n_layers,multiplier=multiplier)
+    return encoder_layers_size, decoder_layers_size
