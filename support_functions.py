@@ -111,6 +111,20 @@ def split_training(labels,ratio = 0.8):
             break
     return train_ind, test_ind
 
+def split_data_labels_training_testing(data,labels,ratio_train = 0.8):
+    """
+    Function to split the data and labels into training and testing set
+    """
+    train_ind, test_ind = split_training(labels,ratio_train)
+
+    data_train = data[train_ind]
+    data_test = data[test_ind]
+
+    labels_train = labels[train_ind]
+    labels_test = labels[test_ind]
+
+    return data_train,data_test,labels_train,labels_test
+
 def split_train_eval_test(labels,ratio_train = 0.8, ratio_val = 0):
     """
     This function Split the Data into the Training, Evaluation, and Test Set,
@@ -188,8 +202,8 @@ def eval_prediction(pred,yval,k, rate = False):
     f1 = (2 * precision * recall) / max(1,precision + recall)
     # Find the R-Precision
     RPrec,R = find_r_prec(pred, yval)
-    # Find Precision k
-    PrecK = find_prec_k(pred, yval,k)
+    # Find Precision k - if R < k, we will use R
+    PrecK = find_prec_k(pred, yval,min(k,R))
     # A more direct version of f1 is f1 = 2*tp/(2*tp+fn+fp)
     
     if rate:
@@ -269,23 +283,27 @@ def select_threshold_probability(p, yval, k=10, to_print = False):
     yval_ranked = yval[rank] # Sort the yval with the same order
 
     # Step Size
-    step = (p_ranked.max() - p_ranked.min()) / 100
+    if p_ranked.max() == p_ranked.min(): # A horizontal line: No need to find epsilon
+        best_epsilon = 0
+        best_f1 = 0
+    else:
+        step = (p_ranked.max() - p_ranked.min()) / 100
 
-    for epsilon in np.arange(p_ranked.min(), p_ranked.max(), step):
-        preds_ranked = p_ranked < epsilon # If the probability is smaller than the threshold, it will be identified as an anomaly
+        for epsilon in np.arange(p_ranked.min(), p_ranked.max(), step):
+            preds_ranked = p_ranked < epsilon # If the probability is smaller than the threshold, it will be identified as an anomaly
 
-        tp,tn,fp,fn,f1,RPrec,precK = eval_prediction(preds_ranked,yval_ranked,k,rate = True)
+            tp,tn,fp,fn,f1,RPrec,precK = eval_prediction(preds_ranked,yval_ranked,k,rate = True)
 
-        # Optimize to find the highest precision at k
-        if f1 > best_f1:
-            best_f1 = f1
-            best_epsilon = epsilon
+            # Optimize to find the highest precision at k
+            if f1 > best_f1:
+                best_f1 = f1
+                best_epsilon = epsilon
 
     # Get the best measurement with the best threshold
     if to_print: # Print out the result
         best_preds = p_ranked < best_epsilon # If the pval is larger than the threshold, it will be identified as an anomaly
         eval_with_test(best_preds, yval_ranked, k) # Print out the result
-
+        
     return best_epsilon
 
 def convert_pred(pred,label_Anomaly,label_Normal):
@@ -338,6 +356,7 @@ def eval_with_test(Preds, Labels, k = 10,to_print = True):
         print("F-score: {0:.1f}%".format(F * 100))
         print("R-Precision (# R = " + str(R) +  "): {0:.1f}%".format(RPrec * 100))
         print("Precision@" + str(k) +": {0:.1f}%".format(PrecK * 100))
+        print()
     else:
         return Recall,Precision,F,RPrec,R,PrecK
 
@@ -422,8 +441,11 @@ def train_test_with_reconstruction_error(data_original_train, data_decoded_train
 
     # Plot of the reconstruction error from high to low
     if to_print: 
-        print("The higher the reconstruction error, the more likely the point will be an anomaly")
+        print("Below is a scatter plot that ranks the data points according to their Reconstruction Errors.")
+        print("The higher the reconstruction error, the more likely the point will be detected as an anomaly")
+        print("The Black Points are True Anomalies, while the others are True Normal points")
         plot_scatter_with_labels(dist_train,labels_train,"Reconstruction Error")
+        print()
 
     # Get the number of actual anomaly for the R-precision
     r_train = sum(labels_train)
@@ -457,7 +479,7 @@ def train_test_with_reconstruction_error(data_original_train, data_decoded_train
         Recall,Precision,F,RPrec,R,PrecK = eval_with_test(preds, labels_test_ranked, k,to_print = to_print)
         return Recall,Precision,F,RPrec,R,PrecK
 
-def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k,whitened = False, lam = 0,folds = 2, plot_comparison = False):
+def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k,whitened = False, lam = 0,folds = 2, plot_comparison = False,to_print = True):
     """
     Factorize the training and testing process of the Multivariate Gaussian-based method.
     Note:
@@ -469,22 +491,22 @@ def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k
     ## Training
     if whitened:
         # Apply Cross-Validation to find the best lambda
-        dist = fit_gaussian_with_whiten_and_cv(data_train,labels_train,folds,k)
+        dist = fit_gaussian_with_whiten_and_cv(data_train,labels_train,folds,k,plot_comparison=to_print)
     else:
         # Get Gaussian Distribution Model with the Training Data
         # Note: fit_multivariate_gaussian() is my own coded function
-        dist = fit_multivariate_gaussian(data_train,whitened, plot_comparison)
+        dist = fit_multivariate_gaussian(data_train,whitened, plot_comparison,plot_comparison=to_print)
 
     # Get Probability of being Anomaly vs. being Normal
     p_train = dist.pdf(data_train)   # Probability of Being Normal
 
     ## Print training results
     # Plot the Probability with labels
-    plot_scatter_with_labels(p_train, labels_train,'Gaussian Probability')
-    # Train the Anomaly Detector
-    print("Training Results:")
-    threshold_gaussian  = select_threshold_probability(p_train, labels_train, k, to_print = True)
-    print()
+    if to_print:
+        plot_scatter_with_labels(p_train, labels_train,'Gaussian Probability')
+        # Train the Anomaly Detector
+        print("Training Results:")
+    threshold_gaussian  = select_threshold_probability(p_train, labels_train, k, to_print = to_print)
 
     ## Testing
     # Find the euclidean distance between the reconstructed dataset and the original ()
@@ -500,9 +522,14 @@ def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k
     preds[p_test_ranked < threshold_gaussian] = 1 # If the probability is smaller than the threshold, marked as anomaly
 
     # Evaluate the Detector with Testing Data
-    eval_with_test(preds, labels_test_ranked, k)
+    if to_print:# with print & no return
+        print("Testing Results:")
+        eval_with_test(preds, labels_test_ranked, k,to_print = to_print)
+    else: # no print & with return
+        Recall,Precision,F,RPrec,R,PrecK = eval_with_test(preds, labels_test_ranked, k,to_print = to_print)
+        return Recall,Precision,F,RPrec,R,PrecK
 
-def fit_gaussian_with_whiten_and_cv(data,labels,folds,k):
+def fit_gaussian_with_whiten_and_cv(data,labels,folds,k,to_print = True):
     """
     Here we fit a multivariate gaussian with whitening and cross validation
     """
@@ -561,25 +588,29 @@ def fit_gaussian_with_whiten_and_cv(data,labels,folds,k):
         if f1_avg > best_f1_avg:
             best_lam = lam # Record the current lambda
             best_f1_avg = f1_avg # Record the current target measurement
-        print('Finish evaluate Lambda: ' + str(lam))
+        if to_print:
+            print('Finish evaluate Lambda: ' + str(lam))
 
-    plt.figure(figsize=(15,8))
-    plt.subplot(1,2,1)
-    plt.plot(lam_list, rprec_avg_list)
-    plt.xlabel('Lambda')
-    plt.ylabel('R-Precision')
-    plt.title('R-Precision Achieved at Different Lambda')
+    if to_print:
+        plt.figure(figsize=(15,8))
+        plt.subplot(1,2,1)
+        plt.plot(lam_list, rprec_avg_list)
+        plt.xlabel('Lambda')
+        plt.ylabel('R-Precision')
+        plt.title('R-Precision Achieved at Different Lambda')
 
-    plt.subplot(1,2,2)
-    plt.plot(lam_list, preck_avg_list)
-    plt.xlabel('Lambda')
-    plt.ylabel('Precision@'+str(k))
-    plt.title('Precision@' +str(k)+' Achieved at Different Lambda')
+        plt.subplot(1,2,2)
+        plt.plot(lam_list, preck_avg_list)
+        plt.xlabel('Lambda')
+        plt.ylabel('Precision@'+str(k))
+        plt.title('Precision@' +str(k)+' Achieved at Different Lambda')
 
-    plt.show()
+        plt.show()
 
     # Print the best lambda
-    print('The best lambda selected from the cross validation is: ' + str(best_lam))
+    if to_print:
+        print('The best lambda selected from the cross validation is: ' + str(best_lam))
+
     # Use the optimal lambda and the entire data set to find the optimal dist
     dist = fit_multivariate_gaussian(data, whitened = True,lam = best_lam)
     return dist
@@ -725,13 +756,18 @@ def compare_whiten_cov(cov,cov_whitened):
     plt.show()
 
 
-def compare_var(data, data_pca,to_print = False):
+def compare_var(data, data_pca,pca_encoding_dimension,to_print = False):
     '''
     This function compare the % variance achieved with the PCA Encoding 
     '''
-    var_retained = (np.var(data_pca)*data_pca.shape[1])/(np.var(data)*data.shape[1])
+    var_retained = np.var(data_pca)/np.var(data)
     if to_print:
-        print("{0:.1f}% variance is retained with the current PCA Encoding.".format(var_retained * 100))
+        dimension_origin = data.shape[1]
+        print('Summary of PCA Encoding: ')
+        print('Number of Dimension in the Original Dataset: ' + str(dimension_origin))
+        print('Number of Dimension in the PCA-Encoded Dataset: '+ str(pca_encoding_dimension))
+        print("{0:.1f}% variance is retained with the current PCA Reconstruction.".format(var_retained * 100))
+        print()
     return var_retained
 
 def evaludate_pc(data,labels):
@@ -740,13 +776,59 @@ def evaludate_pc(data,labels):
     '''
     var_retained_list = []
     n_components_list = []
-    for n_components in range(0,data.shape[1]+1):
+    n_steps = 50 # To save the speed, in maximum we will evaluate 50 PC#s
+    step_size = max(int(data.shape[1]/n_steps),1) 
+    for n_components in range(0,data.shape[1]+1,step_size):
         data_pca,pca_matrix, component_mean = pca_all_processes(data,labels,n_components)
-        var_retained = compare_var(data, data_pca)
+        var_retained = compare_var(data, data_pca,n_components)
         var_retained_list.append(var_retained)
         n_components_list.append(n_components)
     plt.plot(n_components_list,var_retained_list)
     plt.xlabel('# Components Retained after encoding')
-    plt.ylabel('Varaince Retained after encoding')
+    plt.ylabel('Varaince Retained with PCA Reconstruction')
     plt.title('Evaluation of the number of PC retained in PCA')
     plt.show()
+
+def detection_with_pca_reconstruction_error(data_train, data_test,labels_train,labels_test,n_components,k,to_print = False,height=0,width=0):
+    """
+    Function to apply anomaly detection with PCA and Reconstruction Error
+    """
+    if to_print:
+        evaludate_pc(data_train,labels_train) # Evaluate the % variance achieved at different #PC
+
+    # Compute PCA with training dataset, and reconstruct the training dataset
+    data_train_pca,pca_matrix,component_mean = pca_all_processes(data_train,labels_train,n_components,plot_eigenfaces_bool=to_print,plot_comparison_bool=to_print,height=height,width=width)
+    # Reconstruct the test set
+    data_test_pca = reconstruct_with_pca(data_test, component_mean,pca_matrix,n_components)
+
+    if to_print: 
+        compare_var(data_train, data_train_pca,n_components,to_print = to_print) # Find the % variance achieved at the current #PC
+
+    # Anomaly Detection with Reconstruction Error
+    if to_print: # Print result
+        train_test_with_reconstruction_error(data_train, data_train_pca, data_test, data_test_pca, labels_train, labels_test,k,to_print = to_print)
+    else:  # Return results in numeric values
+        Recall,Precision,F,RPrec,R,PrecK = train_test_with_reconstruction_error(data_train, data_train_pca, data_test, data_test_pca, labels_train, labels_test,k,to_print = to_print)
+        return Recall,Precision,F,RPrec,R,PrecK
+
+def detection_with_pca_gaussian(data_train, data_test,labels_train,labels_test,n_components,k,to_print = False,height=0,width=0):
+    """
+    Function to apply anomaly detection with PCA and Gaussian
+    """
+    if to_print:
+        evaludate_pc(data_train,labels_train) # Evaluate the % variance achieved at different #PC
+    # Compute PCA with training dataset and encode the training dataset
+    data_train_encoded,pca_matrix, component_mean = pca_all_processes(data_train,labels_train,n_components,plot_eigenfaces_bool = to_print,decode = False,height=height,width=width)
+    # Encode the test set
+    data_test_encoded = encode_pca(data_test, component_mean,pca_matrix,n_components)
+
+    if to_print: 
+        data_train_pca = reconstruct_with_pca(data_train, component_mean, pca_matrix, n_components) # Reconstruct with PCA
+        compare_var(data_train, data_train_pca,n_components,to_print = to_print) # FInd the % variance achieved at the current #PC
+
+    # Anomaly Detection with Reconstruction Error
+    if to_print: # Print result
+        train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,k,to_print=to_print)
+    else:  # Return results in numeric values
+        Recall,Precision,F,RPrec,R,PrecK = train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,k,to_print=to_print)
+        return Recall,Precision,F,RPrec,R,PrecK

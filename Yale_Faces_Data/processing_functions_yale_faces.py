@@ -20,10 +20,13 @@ sys.path.insert(0,parentdir)
 from support_functions import *
 from Autoencoder_Functions import *
 
-def get_data(label_1_folder,target_folders,data_path, reduce_height = 24, reduce_width = 21):
+def get_yale_faces_data(data_path, reduce_height = 24, reduce_width = 21):
     """
     Automate the process to read and process the data
     """
+    # Here we specify the 
+    label_1_folder = [9,21] # Folders that contain the anomaly data
+    target_folders = range(1,29) # Folders to extract the image and label data
     # Read the images and reduce the size
     # We also need to reduce the size of the image for the convenience of computation
     images,labels = read_images(data_path,target_folders,label_1_folder,reduce_height,reduce_width)
@@ -128,7 +131,7 @@ def remove_dark_img(imgs,labels,dark_pixel_threshold,light_threshold = 20):
             del imgs[i]
             del labels[i]
             remove_count = remove_count + 1
-    print (remove_count,' images are above our threshold and thus removed from the list')
+    # print (remove_count,' images are above our threshold and thus removed from the list')
     return imgs,labels,remove_count
 
 def get_deep_model_config(input_dimension):
