@@ -484,7 +484,7 @@ def train_test_with_reconstruction_error(data_original_train, data_decoded_train
         Recall,Precision,F,RPrec,R,PrecK = eval_with_test(preds, labels_test_ranked, k,to_print = to_print)
         return Recall,Precision,F,RPrec,R,PrecK
 
-def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k,whitened = False, lam = 0,folds = 2, plot_comparison = False,to_print = True):
+def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k,whitened = False, folds = 3, plot_comparison = False,to_print = True):
     """
     Factorize the training and testing process of the Multivariate Gaussian-based method.
     Note:
@@ -496,11 +496,11 @@ def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k
     ## Training
     if whitened:
         # Apply Cross-Validation to find the best lambda
-        dist = fit_gaussian_with_whiten_and_cv(data_train,labels_train,folds,k,plot_comparison=to_print)
+        dist = fit_gaussian_with_whiten_and_cv(data_train,labels_train,folds,k,to_print=to_print)
     else:
         # Get Gaussian Distribution Model with the Training Data
         # Note: fit_multivariate_gaussian() is my own coded function
-        dist = fit_multivariate_gaussian(data_train,whitened, plot_comparison,plot_comparison=to_print)
+        dist = fit_multivariate_gaussian(data_train, plot_comparison,plot_comparison=to_print)
 
     # Get Probability of being Anomaly vs. being Normal
     p_train = dist.pdf(data_train)   # Probability of Being Normal
@@ -537,6 +537,7 @@ def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k
 def fit_gaussian_with_whiten_and_cv(data,labels,folds,k,to_print = True):
     """
     Here we fit a multivariate gaussian with whitening and cross validation
+    to_print: if true, plot the comparison between the original and whitened cov
     """
     kf = KFold(n_splits = folds) # Create multiple folds for cross validation (cv)
     best_rprec_avg = 0 # Initialize the best average RPrec 
@@ -831,7 +832,7 @@ def detection_with_pca_gaussian(data_train, data_test,labels_train,labels_test,n
         data_train_pca = reconstruct_with_pca(data_train, component_mean, pca_matrix, n_components) # Reconstruct with PCA
         compare_var(data_train, data_train_pca,n_components,to_print = to_print) # FInd the % variance achieved at the current #PC
 
-    # Anomaly Detection with Reconstruction Error
+    # Anomaly Detection with the Gaussian Model
     if to_print: # Print result
         train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,k,to_print=to_print)
     else:  # Return results in numeric values
@@ -852,6 +853,13 @@ def detection_with_autoencoder_reconstruction_error(data_train, data_test,labels
     autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_layers_size, decoder_layers_size) 
     autoencoder = load_model(model_path) # Load the saved model
 
+    # Print the summary  of the autoencoder model
+    if to_print:
+        print('Below is a summery of the autoencoder model: ')
+        print(autoencoder.summary())
+        print("\n The output shape of the autoencoder model: ")
+        print(autoencoder.output_shape)
+    
     # Reconstruct the training data with autoencoder
     data_train_reconstructed,data_train = reconstruct_with_autoencoder(autoencoder,data_train,visual =to_print,height = height, width = width,image=is_image_data)
 
@@ -863,4 +871,43 @@ def detection_with_autoencoder_reconstruction_error(data_train, data_test,labels
         train_test_with_reconstruction_error(data_train, data_train_reconstructed, data_test, data_test_reconstructed, labels_train, labels_test,k,to_print = to_print)
     else:  # Return results in numeric values
         Recall,Precision,F,RPrec,R,PrecK = train_test_with_reconstruction_error(data_train, data_train_reconstructed, data_test, data_test_reconstructed, labels_train, labels_test,k,to_print = to_print)
+        return Recall,Precision,F,RPrec,R,PrecK
+
+def detection_with_autoencoder_gaussian(data_train, data_test,labels_train,labels_test,k,model_path,is_image_data=True,to_print = False,height=0,width=0):
+    """
+    Function to apply anomaly detection with Autoencoder and Multivariate Gaussian Method
+    model_path: path that stores the model
+    is_image_data: boolean to indicate if the data is of image type
+    """
+    # Generate and Compile an encoder
+    # Specify the model config
+    data_dimensions=data_train.shape[1] # No.dimensions in the data
+    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions)
+    # Extract the saved autoencoder model
+    autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_layers_size, decoder_layers_size) 
+    autoencoder = load_model(model_path) # Load the saved model
+    # Extract the encoder model from the autoencoder model
+    encoder_n_layers = len(encoder_layers_size) # Get the number of layers in the encoder
+    weights_encoder = autoencoder.get_weights()[0:encoder_n_layers+1] # The first half of the autoencoder model is an encoder model
+    encoder.set_weights(weights_encoder) # Set weights
+
+    # Print the summary  of the encoder model
+    if to_print:
+        print('Below is a summery of the encoder model: ')
+        print(encoder.summary())
+        print("\n The output shape of the encoder model: ")
+        print(encoder.output_shape)
+    
+    # Print the reconstructed image
+    if to_print:
+        data_train_reconstructed,data_train = reconstruct_with_autoencoder(autoencoder,data_train,visual =to_print,height = height, width = width,image=is_image_data)
+    # Encode the data in the training and the testing set
+    data_train_encoded = encode_data(encoder, data_train)
+    data_test_encoded = encode_data(encoder, data_test)
+
+    # Anomaly Detection with the Gaussian Model: need to whiten the covariance
+    if to_print: # Print result
+        train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,k,whitened = True, plot_comparison = to_print, to_print=to_print)
+    else:  # Return results in numeric values
+        Recall,Precision,F,RPrec,R,PrecK = train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,k,whitened = True, plot_comparison = to_print, to_print=to_print)
         return Recall,Precision,F,RPrec,R,PrecK
