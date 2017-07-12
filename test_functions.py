@@ -144,9 +144,9 @@ def faces_autoencoder_reconstruction_error(k=10, data_path='Yale_Faces_Data/Crop
 
     # Anomaly Detection with Reconstruction Error
     if to_print: 
-        detection_with_autoencoder_gaussian(imgs_train, imgs_test,labels_train,labels_test,k,model_path,is_image_data=is_image_data,to_print = to_print,height=height,width=width)
+        detection_with_autoencoder_reconstruction_error(imgs_train, imgs_test,labels_train,labels_test,k,model_path,is_image_data=is_image_data,to_print = to_print,height=height,width=width)
     else:
-        Recall,Precision,F,RPrec,R,PrecK = detection_with_autoencoder_gaussian(imgs_train, imgs_test,labels_train,labels_test,k,model_path,is_image_data=is_image_data,to_print = to_print)
+        Recall,Precision,F,RPrec,R,PrecK = detection_with_autoencoder_reconstruction_error(imgs_train, imgs_test,labels_train,labels_test,k,model_path,is_image_data=is_image_data,to_print = to_print)
         return Recall,Precision,F,RPrec,R,PrecK
 
 def faces_autoencoder_gaussian(k=10, data_path='Yale_Faces_Data/CroppedYale/',model_path = 'Yale_Faces_Data/model_autoencoder.h5',to_print=False,is_image_data=True):
