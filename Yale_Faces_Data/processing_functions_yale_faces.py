@@ -18,7 +18,6 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
 from support_functions import *
-from Autoencoder_Functions import *
 
 def get_yale_faces_data(data_path, reduce_height = 24, reduce_width = 21):
     """

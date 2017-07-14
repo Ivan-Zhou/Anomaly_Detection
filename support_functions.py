@@ -12,13 +12,9 @@ import random
 from random import shuffle
 from keras.layers import Input, Dense
 from keras.models import Model
-from PCA_Functions import *
-from Autoencoder_Functions import *
+from keras.models import load_model
 from sklearn.model_selection import KFold
 
-from keras.layers import Input, Dense
-from keras.models import Model
-from keras.models import load_model
 
 def plot_images(imgs,labels):
     """
@@ -500,7 +496,7 @@ def train_test_with_gaussian(data_train, data_test, labels_train, labels_test, k
     else:
         # Get Gaussian Distribution Model with the Training Data
         # Note: fit_multivariate_gaussian() is my own coded function
-        dist = fit_multivariate_gaussian(data_train, plot_comparison,plot_comparison=to_print)
+        dist = fit_multivariate_gaussian(data_train,plot_comparison=to_print)
 
     # Get Probability of being Anomaly vs. being Normal
     p_train = dist.pdf(data_train)   # Probability of Being Normal
@@ -620,6 +616,351 @@ def fit_gaussian_with_whiten_and_cv(data,labels,folds,k,to_print = True):
     # Use the optimal lambda and the entire data set to find the optimal dist
     dist = fit_multivariate_gaussian(data, whitened = True,lam = best_lam)
     return dist
+
+
+def mean_shift(data, component_mean):
+    """
+    This function applies mean shift to each component in the component matrix
+    The input components is a m*n matrix. Each column correspons to one component.
+    It is important to return the components' mean vector: we will need it in PCA reconstruction
+    """
+    data_shifted = (data - component_mean)
+    return data_shifted
+
+def plot_eigenfaces(pca_matrix,height, width):
+    """
+    This function plot the eigenfaces based on the given PCA Matrix
+    """
+    n_eigen = pca_matrix.shape[1]
+    # Define the layout of the plots
+    n_row = 4
+    n_col = min(5,n_eigen//n_row)
+
+    # Create figure with 3x3 sub-plots.
+    fig, axes = plt.subplots(n_row, n_col,figsize=(15,15))
+    fig.subplots_adjust(hspace=0.1, wspace=0.01)
+
+    for i, ax in enumerate(axes.flat): 
+        ax.imshow(pca_matrix[:,i].reshape(height, width), plt.cm.gray)
+        xlabel = "Eigenface: {0}".format(i+1)
+        # Show the classes as the label on the x-axis.
+        ax.set_xlabel(xlabel)
+        
+        # Remove ticks from the plot.
+        ax.set_xticks([])
+        ax.set_yticks([])
+    plt.show()
+
+def check_eigen(eigen_value, eigen_vector,cov_matrix):
+    """
+    This function check the correctness of eigenvector & eigenvalue through the equation
+    cov_matrix * eigen_vector = eigen_value * eigen_vector
+    """
+    for i in range(len(eigen_value)): 
+        n = cov_matrix.shape[1]
+        eigv = eigen_vector[:,i].reshape(1,n).T 
+        np.testing.assert_array_almost_equal(cov_matrix.dot(eigv), eigen_value[i] * eigv, decimal=6, err_msg='', verbose=True)
+     
+def compute_pca_matrix(data):
+    """
+    Compute PCA Matrix with the given data
+    data: a matrix of size m*n, where m is the number of samples, and n is the # dimensions
+    """
+    # Record the shape of the data: number of features in columns
+    n_features = data.shape[1]
+
+    # Take a mean shift
+    component_mean = np.mean(data,axis = 0) # Take mean of each column
+    data_shifted = mean_shift(data,component_mean) 
+
+    # compute the covariance matrix of the image matrix
+    cov_matrix = np.cov(data_shifted, rowvar=0) # important to add rowvar to specify the axis
+    # Compute the eigen value and eigen vectors, where eigenvalue is a vector of length n, and eigenvector is a square matrix of size n*n
+    eigen_value, eigen_vector = np.linalg.eig(cov_matrix)
+
+    # Sort the eigenvectors by eigenvalues from large to small 
+    # First make a list of (eigenvalue, eigenvector) tuples 
+    eig_pairs = [(np.abs(eigen_value[i]), eigen_vector[:,i]) for i in range(len(eigen_value))] 
+    # Sort the (eigenvalue, eigenvector) tuples from high to low 
+    eig_pairs.sort(key=lambda x: x[0], reverse=True)
+
+    # Convert the sorted eigen vector list to matrix form
+    pca_matrix = np.zeros((n_features,n_features))
+    for i in range(0,len(eig_pairs)):
+        pca_matrix[:,i] = eig_pairs[i][1]
+
+    # output: 
+    # pca_matrix: sorted eigenvectors in a n*n matrix
+    # mean: the mean of the original input data (across each dimension)
+    return pca_matrix, component_mean
+
+def encode_pca(data, component_mean, pca_matrix, n_components):
+    """
+    Encode the data with PCA Matrix:
+    data: the input data with dimensions m*n
+    component_mean: a vector of length n; used for mean shift
+    pca_matrix: n*n square matrix
+    n_components is the number of components to be used in the PCA Matrix
+    """
+    # Cut the pca_matrix by columns based on the n_components specified
+    pca_matrix_k = pca_matrix[:,:n_components]
+
+    # Take a mean shift on the input data
+    data_shifted = mean_shift(data,component_mean) 
+
+    # Compute the encoded image
+    # Shape of data_shifted: m * n
+    # Shape of pca_matrix: n * k
+    # Shape of the output (encoded data): m*k
+    data_encoded = data_shifted.dot(pca_matrix_k)
+    return data_encoded
+
+def decode_pca(data_encoded, component_mean, pca_matrix, n_components):
+    """
+    Decode the encoded data with PCA Matrix
+    """
+    # Cut the pca_matrix by columns based on the n_components specified
+    pca_matrix_k = pca_matrix[:,:n_components]
+
+    # Reconstruct through PCA Matrix and Mean Vector
+    # Shape of the reconstructed face image matrix: m * n
+    data_decoded = data_encoded.dot(pca_matrix_k.T) + component_mean
+    return data_decoded
+
+def reconstruct_with_pca(data, component_mean, pca_matrix, n_components):
+    """
+    Reconstruct the input data with pca: handle both encoding and then decoding
+    """
+    data_encoded = encode_pca(data, component_mean, pca_matrix, n_components)
+    data_decoded = decode_pca(data_encoded, component_mean, pca_matrix, n_components)
+    return data_decoded
+
+def pca_all_processes(data,labels,n_components, plot_eigenfaces_bool = False,decode = True, plot_comparison_bool = False, height = 0,width = 0):
+    """
+    Factorize the process of pca computation and reconstruction in one function
+    data: in a matrix form with shape m*n
+    labels: a vector where 1 indicates the sample is anomaly, and 0 otherwise
+    n_components, number of components after pca encoding
+    plot_eigenfaces: trigger to plot the eigenfaces of the image, if True, the height and width of the image should be given
+    plot_comparison: trigger to plot the comparison between the original and the reconstructed images; same as above, if true, the height and width of the image should be given
+    """
+    # Compute PCA Matrix: with the normal data only
+    pca_matrix, component_mean = compute_pca_matrix(data[labels == 0])
+
+    if (plot_eigenfaces_bool and height*width !=0): # Plot the eigenfaces only if the data is of the type image
+        # Visualize the eigenfaces with the pca matrix
+        print("Below is the eigenfaces from the PCA Matrix")
+        plot_eigenfaces(pca_matrix[:,:n_components],height, width)
+        print()
+    
+    
+    if decode: # We want to have the decoded data
+        # Encode and then decode the entire dataset with the pca_matrix
+        data_decoded = reconstruct_with_pca(data, component_mean, pca_matrix, n_components)
+
+        if plot_comparison_bool:
+            # Compare the original and reconstructed data in images 
+            print("Below is a comparison between the original and the reconstructed data")
+            plot_compare_after_reconst(data_decoded,data,height,width) # Function saved in support_functions.py
+            print()
+        return data_decoded, pca_matrix, component_mean
+
+    else:
+        data_encoded = encode_pca(data, component_mean, pca_matrix, n_components)
+        return data_encoded, pca_matrix, component_mean
+
+def plot_compare_after_reconst(img_matrix_reconst,imgs_matrix,height,width):
+    """
+    This function compares the images reconstructed after encoding & decoding with their original one.
+    The shape of both image matrice in the input is m*n, where n is the number of components, 
+    and m is the number of images.
+    """
+    if height*width == 0: # Non-image data, plot with heatmap
+        plot_2datasets(imgs_matrix[:20],img_matrix_reconst[:20],'Original Data', 'Reconstructed Data') # Plot the top first 20 rows
+    else: # Image data, reshape and plot side-by-side
+        # Permutate through the image index
+        ind = np.random.permutation(imgs_matrix.shape[0])
+
+        # Create figure with multiple sub-plots.
+        fig, axes = plt.subplots(4, 4,figsize=(15,15))
+        fig.subplots_adjust(hspace=0.1, wspace=0.01)
+
+        # Initialize the counter of images
+        image_count = 0 
+
+        for i, ax in enumerate(axes.flat): 
+            if i % 2 == 0:
+                image_count += 1
+                ax.imshow(imgs_matrix[ind[i],:].reshape(height,width), plt.cm.gray)
+                xlabel = "Example {0}: Original Image".format(image_count)
+            else:
+                ax.imshow(img_matrix_reconst[ind[i-1],:].reshape(height,width), plt.cm.gray)
+                xlabel = "Example {0}: Reconstructed Image".format(image_count)
+            # Show the classes as the label on the x-axis.
+            ax.set_xlabel(xlabel)
+
+            # Remove ticks from the plot.
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+        plt.show()
+
+def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,epochs_size = 80, batch_size = 256,dropout =0,image = True, save_model = True):
+    """
+    data is a matrix of size m*n, where m is the sample size, and n is the dimenions
+    labels is a vector of length n
+    encoder_layers_size: an array that records the size of each hidden layer in the encoder; if there is only one hidden encoder layer, this will be a numeric value
+    decoder_layers_size: an array that records the size of each hidden layer in the decoder; if there is only one hidden decoder layer, this will be a numeric value
+    """
+    # Generate and Compile a Deep Autoencoder and its encoder
+    data_dimensions = data.shape[1] # The dimension = # columns
+    autoencoder,encoder = compile_autoencoder(data_dimensions,encoder_layers_size,decoder_layers_size,dropout = dropout)
+
+    # Prepare the input
+    # Select only the Normal Image Dataset
+    data_normal = data[labels == 0]
+
+    # Split the images and labels
+    # By default: 80% in training and 20% in testing
+    train_ind, test_ind = perm_and_split(len(data_normal))
+    x_train = data_normal[train_ind,:]
+    x_test = data_normal[test_ind,:]
+
+    # Normalize the Data
+    if image:
+        x_train = x_train.astype('float32') / 255.
+        x_test = x_test.astype('float32') / 255.
+    # Run the model
+    autoencoder.fit(x_train, x_train,
+                    epochs = epochs_size,
+                    batch_size = batch_size,
+                    shuffle=True,
+                    validation_data=(x_test, x_test)) # x_train images are both the target and input
+
+    # Save and output the model
+    if save_model:
+        autoencoder.save('model_autoencoder.h5')
+    return autoencoder,encoder
+
+def compile_autoencoder(data_length, encoder_layers_size,decoder_layers_size,dropout = 0):
+    '''
+    Function to construct and compile the deep autoencoder, then return the model
+    Input:
+        - data_length: size of each data point; used as the height
+        - encoder_layers_size,decoder_layers_size: model configuration
+    '''
+    # Set up the input placeholder
+    inputs = Input(shape=(data_length,))
+
+    # Find the number of layers in the encoder and decoder
+    
+    n_decoder_layers = len(decoder_layers_size)
+
+    # "encoded" is the encoded representation of the input
+    encoded = create_hidden_layers(encoder_layers_size,inputs,dropout = dropout)
+    
+    # "decoded" is the lossy reconstruction of the input
+    decoded = create_hidden_layers(decoder_layers_size,encoded,dropout = dropout)
+
+    # The last output layer: same size as the input
+    if dropout>0:
+        decoded = Dropout(dropout)(decoded)
+    decoded = Dense(data_length, activation='sigmoid')(decoded)
+    
+    # The autoencoder model maps an input to its reconstruction
+    autoencoder = Model(inputs, decoded)
+    # The encoder model maps an input to its encoded representation
+    encoder = Model(inputs, encoded)
+    # Compile the autoencoder
+    autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
+    
+    return autoencoder,encoder
+
+def create_hidden_layers(layers_size, inputs, activation_type = 'relu',dropout = 0):
+    """
+    This function factorize the creation of hidden layers with Keras.
+    """
+    model = Dense(int(layers_size[0]),activation = activation_type)(inputs) # The first layer of the model
+    n_hidden_layers = len(layers_size) # Find the number of hidden layers in the model (given as an input)
+    if n_hidden_layers > 1:
+        for i in range(1,n_hidden_layers):
+            if dropout> 0:
+                model = Dropout(dropout)(model)
+            model = Dense(int(layers_size[i]), activation=activation_type)(model)  
+    return model
+
+def reconstruct_with_autoencoder(autoencoder,data,visual =False,height = 0, width = 0,image = True):
+    """
+    Function to reconstruct the data with trained autoencoder
+    """
+    if image:
+        data = data.astype('float32') / 255. # Normalize the Data
+    # Load into the model and get the processed output
+    data_reconstructed = autoencoder.predict(data)
+    if visual:
+        # Plot the original images and their reconstructed version for comparison
+        print("Below are examples of the Reconstructed Data with Deep Autoencoder")
+        plot_compare_after_reconst(data_reconstructed,data,height,width)
+    # We returned the data in the end because it is normalized when it is image type
+    return data_reconstructed, data
+
+def encode_data(encoder,data,image = True):
+    """
+    To encode hte data with the trained encoder
+    """
+    if image:
+        data = data.astype('float32') / 255. # Normalize the Data
+    # Load into the model and get the processed output
+    data_encoded = encoder.predict(data)
+    return data_encoded
+
+def build_encoder_layers(n_layers,multiplier,data_dimensions):
+    """
+    Build layers structure of the encoders
+    n_layers: number of layers in the encoders
+    multiplier: change factor in layer sizes 
+    data_dimensions: # dimensions in the original data
+    """
+    encoder_layers_size = np.zeros(n_layers) # Initialization
+    layer_size = data_dimensions
+    for n in range(0,n_layers):
+        layer_size = int(layer_size/multiplier) # The new layer has a half-size of the previous layer
+        encoder_layers_size[n] = layer_size # Save the layer size
+    return encoder_layers_size
+
+def build_decoder_layers(n_layers,multiplier,encoded_dimensions):
+    """
+    Build layer structure of the decoders
+    n_layers: number of layers in the decoders; the last layer will be built based on the input data in the training function
+    encoded_dimensions: # dimensions 
+    """
+    decoder_layers_size = np.zeros(n_layers-1) # Initialization
+    layer_size = encoded_dimensions 
+    for n in range(0,n_layers - 1):
+        layer_size = int(layer_size*multiplier)
+        decoder_layers_size[n] = layer_size # save the layer size
+    return decoder_layers_size
+
+def set_deep_model_config(input_dimension,n_layers=4,multiplier=2):
+    """
+    This function set the layers config of encoder and decoder based on the input
+    input_dimensions: the dimensions of the input data
+    n_layers: number of layers in encoder/decoder
+    multiplier: the changing factor in layers (for example, each layer in encoder is half of the size of the previous layer)
+    """
+    encoder_layers_size = build_encoder_layers(n_layers,multiplier,input_dimension)
+    decoder_layers_size = build_decoder_layers(n_layers,multiplier,encoder_layers_size[n_layers-1])
+    return encoder_layers_size,decoder_layers_size
+
+def get_deep_model_config(input_dimension,n_layers=4,multiplier=2):
+    """
+    A function to manage the model configuration: keep consistency so that we only need to tune the model here
+    input_dimension: the dimension of the input data
+    n_layers: number of layers in encoder/decoder
+    multiplier: # each layer in encoder is half of the size of the previous layer
+    """
+    encoder_layers_size, decoder_layers_size = set_deep_model_config(input_dimension,n_layers=n_layers,multiplier=multiplier)
+    return encoder_layers_size, decoder_layers_size
 
 def frange(start, stop, step):
     i = start
@@ -839,7 +1180,7 @@ def detection_with_pca_gaussian(data_train, data_test,labels_train,labels_test,n
         Recall,Precision,F,RPrec,R,PrecK = train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,k,to_print=to_print)
         return Recall,Precision,F,RPrec,R,PrecK
 
-def detection_with_autoencoder_reconstruction_error(data_train, data_test,labels_train,labels_test,k,model_path,is_image_data=True,to_print = False,height=0,width=0):
+def detection_with_autoencoder_reconstruction_error(data_train, data_test,labels_train,labels_test,k,model_path,is_image_data=True,to_print = False,n_layers=4,multiplier=2,height=0,width=0):
     """
     Function to apply anomaly detection with Autoencoder and Reconstruction Error
     model_path: path that stores the model
@@ -848,7 +1189,7 @@ def detection_with_autoencoder_reconstruction_error(data_train, data_test,labels
     # Generate and Compile a Deep Autoencoder
     # Specify the model config
     data_dimensions=data_train.shape[1] # No.dimensions in the data
-    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions)
+    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions,n_layers,multiplier)
     # Extract the saved model
     autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_layers_size, decoder_layers_size) 
     autoencoder = load_model(model_path) # Load the saved model
@@ -873,7 +1214,7 @@ def detection_with_autoencoder_reconstruction_error(data_train, data_test,labels
         Recall,Precision,F,RPrec,R,PrecK = train_test_with_reconstruction_error(data_train, data_train_reconstructed, data_test, data_test_reconstructed, labels_train, labels_test,k,to_print = to_print)
         return Recall,Precision,F,RPrec,R,PrecK
 
-def detection_with_autoencoder_gaussian(data_train, data_test,labels_train,labels_test,k,model_path,is_image_data=True,to_print = False,height=0,width=0):
+def detection_with_autoencoder_gaussian(data_train, data_test,labels_train,labels_test,k,model_path,is_image_data=True,to_print = False,n_layers=4,multiplier=2,height=0,width=0):
     """
     Function to apply anomaly detection with Autoencoder and Multivariate Gaussian Method
     model_path: path that stores the model
@@ -882,7 +1223,7 @@ def detection_with_autoencoder_gaussian(data_train, data_test,labels_train,label
     # Generate and Compile an encoder
     # Specify the model config
     data_dimensions=data_train.shape[1] # No.dimensions in the data
-    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions)
+    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions,n_layers,multiplier)
     # Extract the saved autoencoder model
     autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_layers_size, decoder_layers_size) 
     autoencoder = load_model(model_path) # Load the saved model
@@ -911,3 +1252,27 @@ def detection_with_autoencoder_gaussian(data_train, data_test,labels_train,label
     else:  # Return results in numeric values
         Recall,Precision,F,RPrec,R,PrecK = train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,k,whitened = True, plot_comparison = to_print, to_print=to_print)
         return Recall,Precision,F,RPrec,R,PrecK
+
+def read_synthetic_data(folder_path=''):
+    """
+    Automate the process to read and process the data in any of the synthetic folder
+    """
+    data_path = 'data/'
+    data_fname = 'data.npy'
+    labels_fname = 'labels.npy'
+
+    # Load
+    data = np.load(folder_path + data_path + data_fname)
+    labels = np.load(folder_path + data_path + labels_fname)
+
+    # Split the data and labels into the training & testing groups
+    # Split the images and labels
+    ratio_train = 0.7 # No training set
+    train_ind, test_ind = split_training(labels,ratio_train)
+
+    data_train = data[train_ind] 
+    data_test = data[test_ind]
+    labels_train = labels[train_ind]
+    labels_test = labels[test_ind]
+
+    return data,labels, data_train, data_test, labels_train, labels_test
