@@ -9,10 +9,11 @@ class AnomalyData:
     - n_components: number of components remained after PCA encoding
     - k: used to compute the precision@k
     - n_layers: # layers in deep autoencoder model
+    - replicate_for_training: If the dataset is too small, we will replicate the data before training the deep autoencodering
     - multiplier: by what rate should the new layer in the encoder model should decreasing than the previous layer
     """
     
-    def __init__(self,folder_path,data_path,n_components,is_image_data=True,img_height=0,img_width=0,k=20,n_layers=4,multiplier=2,model_path='model_autoencoder.h5'):
+    def __init__(self,folder_path,data_path,n_components,is_image_data=True,img_height=0,img_width=0,k=20,n_layers=4,multiplier=2,replicate_for_training = 0,model_path='model_autoencoder.h5'):
         self.folder_path = folder_path # String
         self.data_path = folder_path + data_path # String
         self.n_components = n_components # int: No components after PCA encoding
@@ -22,6 +23,7 @@ class AnomalyData:
         self.k = k # int: a parameter to be used in Precision@k
         self.n_layers = n_layers # int: no of layers
         self.multiplier = multiplier # double: #neurons in new layer/#neuron in previous layer in encoder model
+        self.replicate_for_training = replicate_for_training # Integer
         self.model_path = folder_path + model_path # String
 
 def set_mnist():
@@ -42,13 +44,14 @@ def set_faces():
     Function to configure MNIST datasets
     """
     folder_path = 'Yale_Faces_Data/'
-    data_path = 'data/'
+    data_path = 'CroppedYale/'
     n_components = 50
     is_image_data = True
     k = 10
     n_layers = 4
     multiplier = 2
-    faces = AnomalyData(folder_path,data_path,n_components,is_image_data=is_image_data,k=k,n_layers=n_layers,multiplier=multiplier)
+    replicate_for_training = 300
+    faces = AnomalyData(folder_path,data_path,n_components,is_image_data=is_image_data,k=k,n_layers=n_layers,replicate_for_training=replicate_for_training,multiplier=multiplier)
     return faces
 
 def set_synthetic(folder_path):
@@ -58,3 +61,4 @@ def set_synthetic(folder_path):
     n_layers = 2
     multiplier = 1.5
     synthetic = AnomalyData(folder_path,data_path,n_components,is_image_data=is_image_data,n_layers=n_layers,multiplier=multiplier)
+    return synthetic

@@ -10,9 +10,11 @@ import glob
 from operator import itemgetter 
 import random
 from random import shuffle
+import tensorflow as tf
 from keras.layers import Input, Dense
 from keras.models import Model
 from keras.models import load_model
+from keras.backend.tensorflow_backend import set_session
 from sklearn.model_selection import KFold
 from AnomalyDataClass import * # Functions to extract parameters of each data files 
 
@@ -33,7 +35,6 @@ class Results:
     - tn: # true negative
     - fp: # false positive
     - fn: # false negative
-    Recall,Precision,F,RPrec,R,PrecK 
     """
     
     def __init__(self,data_name='',detect_model='',Recall=0.0,Precision=0.0,F=0.0,RPrec=0.0,R=0,PrecK=0.0,k=0,tp=0,tn=0,fp=0,fn=0):
@@ -50,6 +51,26 @@ class Results:
         self.tn = tn # Integer
         self.fp = fp # Integer
         self.fn = fn # Integer
+
+
+## Function to Run Detection on any dataset
+def read_and_detect(read_func,detect_func,to_print = False):
+    """
+    Function to trigger the process of reading data and anomaly detection
+    parameters: 
+    - read_func: a function to read data, labels and parameters
+    - detect_func: a function to detect anomlies
+    - to_print: to_print: a trigger of printing out all the visualization and results
+    """
+    # Read the data
+    AnomalyData, data_train, data_test, labels_train, labels_test=read_func()
+
+    # Run Anomaly Detection
+    if to_print:
+        detect_func(AnomalyData,data_train, data_test,labels_train,labels_test,to_print = to_print)
+    else: 
+        results = detect_func(AnomalyData,data_train, data_test,labels_train,labels_test,to_print = to_print)
+        return results
 
 ## Functions to Get Data
 def read_mnist_data(anomaly_digit=2):
@@ -93,7 +114,7 @@ def read_mnist_data(anomaly_digit=2):
 
 def get_yale_faces_data(reduce_height = 24, reduce_width = 21):
     """
-    Automate the process to read and process the data
+    Automate the process to read and process the faces data
     """
     # Read the faces as an instance of the AnomalyData Class
     faces = set_faces()
@@ -104,11 +125,10 @@ def get_yale_faces_data(reduce_height = 24, reduce_width = 21):
 
     # Read the images and reduce the size
     # We also need to reduce the size of the image for the convenience of computation
-    imgs,labels = read_images(faces.data_path,target_folders,label_1_folder,reduce_height,reduce_width)
+    imgs,labels = read_faces_images(faces.data_path,target_folders,label_1_folder,reduce_height,reduce_width)
 
     # To evaluate the threshold of the dark pixels
     # dark_pixel_curve(images)
-
     # Eliminate the images and labels whose number of dark pixels are above the threshold
     # The threshold is determined based on the dark_pixel_curve() function above
     imgs,labels,remove_count = remove_dark_img(imgs,labels,180) 
@@ -146,14 +166,15 @@ def read_synthetic_data(folder_path=''):
     """
     Automate the process to read and process the data in any of the synthetic folder
     """
-    # Read
-    data_path = 'data/'
+    # Read the faces as an instance of the AnomalyData Class
+    synthetic = set_synthetic(folder_path)
+    # Set filenames
     data_fname = 'data.npy'
     labels_fname = 'labels.npy'
 
     # Load
-    data = np.load(folder_path + data_path + data_fname)
-    labels = np.load(folder_path + data_path + labels_fname)
+    data = np.load(synthetic.data_path + data_fname)
+    labels = np.load(synthetic.data_path + labels_fname)
 
     # Split the data and labels into the training & testing groups
     # Split the images and labels
@@ -165,28 +186,10 @@ def read_synthetic_data(folder_path=''):
     labels_train = labels[train_ind]
     labels_test = labels[test_ind]
 
-    return data,labels, data_train, data_test, labels_train, labels_test
+    return synthetic, data_train, data_test, labels_train, labels_test
 
 
 ## Functions of Detection Models
-def read_and_detect(read_func,detect_func,to_print = False):
-    """
-    Function to trigger the process of reading data and anomaly detection
-    parameters: 
-    - read_func: a function to read data, labels and parameters
-    - detect_func: a function to detect anomlies
-    - to_print: to_print: a trigger of printing out all the visualization and results
-    """
-    # Read the data
-    AnomalyData, data_train, data_test, labels_anomaly_train, labels_anomaly_test=read_func()
-
-    # Run Anomaly Detection
-    if to_print:
-        detection_with_pca_reconstruction_error(AnomalyData,data_train, data_test,labels_train,labels_test,to_print = to_print)
-    else: 
-        results = detection_with_pca_reconstruction_error(AnomalyData,data_train, data_test,labels_train,labels_test,to_print = to_print)
-        return results
-
 def detection_with_pca_reconstruction_error(AnomalyData,data_train,data_test,labels_train,labels_test,to_print = False):
     """
     Function to apply anomaly detection with PCA and Reconstruction Error
@@ -195,10 +198,13 @@ def detection_with_pca_reconstruction_error(AnomalyData,data_train,data_test,lab
     - to_print: a trigger of printing out all the visualization and results
     """
     if to_print:
+        print("Start the Anomaly Detection with PCA and Reconstruction Error: ")
+
+    if to_print:
         evaludate_pc(data_train,labels_train) # Evaluate the % variance achieved at different #PC
 
     # Compute PCA with training dataset, and reconstruct the training dataset
-    data_train_pca,pca_matrix,component_mean = pca_all_processes(data_train,labels_train,AnomalyData.n_components,plot_eigenfaces_bool=to_print,plot_comparison_bool=to_print,height=AnomalyData.height,width=AnomalyData.width)
+    data_train_pca,pca_matrix,component_mean = pca_all_processes(data_train,labels_train,AnomalyData.n_components,plot_eigenfaces_bool=to_print,plot_comparison_bool=to_print,height=AnomalyData.img_height,width=AnomalyData.img_width)
     # Reconstruct the test set
     data_test_pca = reconstruct_with_pca(data_test,component_mean,pca_matrix,AnomalyData.n_components)
 
@@ -209,44 +215,54 @@ def detection_with_pca_reconstruction_error(AnomalyData,data_train,data_test,lab
     if to_print: # Print result
         train_test_with_reconstruction_error(data_train, data_train_pca, data_test, data_test_pca, labels_train, labels_test,AnomalyData.k,to_print = to_print)
     else:  # Return results in numeric values
-        Recall,Precision,F,RPrec,R,PrecK = train_test_with_reconstruction_error(data_train, data_train_pca, data_test, data_test_pca, labels_train, labels_test,AnomalyData.k,to_print = to_print)
-        return Recall,Precision,F,RPrec,R,PrecK
+        results = train_test_with_reconstruction_error(data_train, data_train_pca, data_test, data_test_pca, labels_train, labels_test,AnomalyData.k,to_print = to_print)
+        return results
 
-def detection_with_pca_gaussian(data_train, data_test,labels_train,labels_test,n_components,k,to_print = False,height=0,width=0):
+def detection_with_pca_gaussian(AnomalyData,data_train, data_test,labels_train,labels_test,to_print = False):
     """
     Function to apply anomaly detection with PCA and Gaussian
+    Parameters:
+    - AnomalyData: an instance of the AnomalyData class that stores necessary parameters
+    - to_print: a trigger of printing out all the visualization and results
     """
+    if to_print:
+        print("Start the Anomaly Detection with PCA and Multivariate Gaussian Method: ")
+
     if to_print:
         evaludate_pc(data_train,labels_train) # Evaluate the % variance achieved at different #PC
     # Compute PCA with training dataset and encode the training dataset
-    data_train_encoded,pca_matrix, component_mean = pca_all_processes(data_train,labels_train,n_components,plot_eigenfaces_bool = to_print,decode = False,height=height,width=width)
+    data_train_encoded,pca_matrix, component_mean = pca_all_processes(data_train,labels_train,AnomalyData.n_components,plot_eigenfaces_bool = to_print,decode = False,height=AnomalyData.img_height,width=AnomalyData.img_width)
     # Encode the test set
-    data_test_encoded = encode_pca(data_test, component_mean,pca_matrix,n_components)
+    data_test_encoded = encode_pca(data_test, component_mean,pca_matrix,AnomalyData.n_components)
 
     if to_print: 
-        data_train_pca = reconstruct_with_pca(data_train, component_mean, pca_matrix, n_components) # Reconstruct with PCA
-        compare_var(data_train, data_train_pca,n_components,to_print = to_print) # FInd the % variance achieved at the current #PC
+        data_train_pca = reconstruct_with_pca(data_train, component_mean, pca_matrix, AnomalyData.n_components) # Reconstruct with PCA
+        compare_var(data_train, data_train_pca,AnomalyData.n_components,to_print = to_print) # FInd the % variance achieved at the current #PC
 
     # Anomaly Detection with the Gaussian Model
     if to_print: # Print result
-        train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,k,to_print=to_print)
+        train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,AnomalyData.k,to_print=to_print)
     else:  # Return results in numeric values
-        Recall,Precision,F,RPrec,R,PrecK = train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,k,to_print=to_print)
-        return Recall,Precision,F,RPrec,R,PrecK
+        results = train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,AnomalyData.k,to_print=to_print)
+        return results
 
-def detection_with_autoencoder_reconstruction_error(data_train, data_test,labels_train,labels_test,k,model_path,is_image_data=True,to_print = False,n_layers=4,multiplier=2,height=0,width=0):
+def detection_with_autoencoder_reconstruction_error(AnomalyData,data_train, data_test,labels_train,labels_test,to_print = False):
     """
     Function to apply anomaly detection with Autoencoder and Reconstruction Error
-    model_path: path that stores the model
-    is_image_data: boolean to indicate if the data is of image type
+    Parameters:
+    - AnomalyData: an instance of the AnomalyData class that stores necessary parameters
+    - to_print: a trigger of printing out all the visualization and results
     """
+    if to_print:
+        print("Start the Anomaly Detection with Deep Autoencoder and Reconstruction Error: ")
+
     # Generate and Compile a Deep Autoencoder
     # Specify the model config
     data_dimensions=data_train.shape[1] # No.dimensions in the data
-    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions,n_layers,multiplier)
+    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions,AnomalyData.n_layers,AnomalyData.multiplier)
     # Extract the saved model
     autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_layers_size, decoder_layers_size) 
-    autoencoder = load_model(model_path) # Load the saved model
+    autoencoder = load_model(AnomalyData.model_path) # Load the saved model
 
     # Print the summary  of the autoencoder model
     if to_print:
@@ -256,31 +272,34 @@ def detection_with_autoencoder_reconstruction_error(data_train, data_test,labels
         print(autoencoder.output_shape)
     
     # Reconstruct the training data with autoencoder
-    data_train_reconstructed,data_train = reconstruct_with_autoencoder(autoencoder,data_train,visual =to_print,height = height, width = width,image=is_image_data)
+    data_train_reconstructed,data_train = reconstruct_with_autoencoder(autoencoder,data_train,visual =to_print,height = AnomalyData.img_height, width = AnomalyData.img_width,image=AnomalyData.is_image_data)
 
     # Reconstruct the testing data
-    data_test_reconstructed,data_test = reconstruct_with_autoencoder(autoencoder,data_test,visual =False,height = height, width = width,image=is_image_data)
+    data_test_reconstructed,data_test = reconstruct_with_autoencoder(autoencoder,data_test,visual =False,height = AnomalyData.img_height, width = AnomalyData.img_width,image=AnomalyData.is_image_data)
 
     # Anomaly Detection with Reconstruction Error
     if to_print: # Print result
-        train_test_with_reconstruction_error(data_train, data_train_reconstructed, data_test, data_test_reconstructed, labels_train, labels_test,k,to_print = to_print)
+        train_test_with_reconstruction_error(data_train, data_train_reconstructed, data_test, data_test_reconstructed, labels_train, labels_test,AnomalyData.k,to_print = to_print)
     else:  # Return results in numeric values
-        Recall,Precision,F,RPrec,R,PrecK = train_test_with_reconstruction_error(data_train, data_train_reconstructed, data_test, data_test_reconstructed, labels_train, labels_test,k,to_print = to_print)
-        return Recall,Precision,F,RPrec,R,PrecK
+        results = train_test_with_reconstruction_error(data_train, data_train_reconstructed, data_test, data_test_reconstructed, labels_train, labels_test,k,to_print = to_print)
+        return results
 
-def detection_with_autoencoder_gaussian(data_train, data_test,labels_train,labels_test,k,model_path,is_image_data=True,to_print = False,n_layers=4,multiplier=2,height=0,width=0):
+def detection_with_autoencoder_gaussian(AnomalyData,data_train, data_test,labels_train,labels_test,to_print = False):
     """
     Function to apply anomaly detection with Autoencoder and Multivariate Gaussian Method
-    model_path: path that stores the model
-    is_image_data: boolean to indicate if the data is of image type
+    Parameters:
+    - AnomalyData: an instance of the AnomalyData class that stores necessary parameters
+    - to_print: a trigger of printing out all the visualization and results
     """
+    if to_print:
+        print("Start the Anomaly Detection with Deep Autoencoder and Multivariate Gaussian Model: ")
     # Generate and Compile an encoder
     # Specify the model config
     data_dimensions=data_train.shape[1] # No.dimensions in the data
-    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions,n_layers,multiplier)
+    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions,AnomalyData.n_layers,AnomalyData.multiplier)
     # Extract the saved autoencoder model
     autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_layers_size, decoder_layers_size) 
-    autoencoder = load_model(model_path) # Load the saved model
+    autoencoder = load_model(AnomalyData.model_path) # Load the saved model
     # Extract the encoder model from the autoencoder model
     encoder_n_layers = len(encoder_layers_size) # Get the number of layers in the encoder
     weights_encoder = autoencoder.get_weights()[0:encoder_n_layers+1] # The first half of the autoencoder model is an encoder model
@@ -295,20 +314,20 @@ def detection_with_autoencoder_gaussian(data_train, data_test,labels_train,label
     
     # Print the reconstructed image
     if to_print:
-        data_train_reconstructed,data_train = reconstruct_with_autoencoder(autoencoder,data_train,visual =to_print,height = height, width = width,image=is_image_data)
+        data_train_reconstructed,data_train = reconstruct_with_autoencoder(autoencoder,data_train,visual =to_print,height = AnomalyData.img_height, width = AnomalyData.img_width,image=AnomalyData.is_image_data)
     # Encode the data in the training and the testing set
     data_train_encoded = encode_data(encoder, data_train)
     data_test_encoded = encode_data(encoder, data_test)
 
     # Anomaly Detection with the Gaussian Model: need to whiten the covariance
     if to_print: # Print result
-        train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,k,whitened = True, plot_comparison = to_print, to_print=to_print)
+        train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,AnomalyData.k,whitened = True, plot_comparison = to_print, to_print=to_print)
     else:  # Return results in numeric values
-        Recall,Precision,F,RPrec,R,PrecK = train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,k,whitened = True, plot_comparison = to_print, to_print=to_print)
-        return Recall,Precision,F,RPrec,R,PrecK
+        results = train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,AnomalyData.k,whitened = True, plot_comparison = to_print, to_print=to_print)
+        return results
 
 ## Support Functions for Yale Faces Data
-def read_images(data_path,target_folders,label_1_folder,reduce_height = 24,reduce_width = 21):
+def read_faces_images(data_path,target_folders,label_1_folder,reduce_height = 24,reduce_width = 21):
     """
     This function reads in all images inside the specified folders, and label the images based on label_1_folder
     data_path: the path of the folder where all the image folders reside in
@@ -316,10 +335,10 @@ def read_images(data_path,target_folders,label_1_folder,reduce_height = 24,reduc
     label_1_folder: images in the specified folders will be labeled with 1
     """
     # label_1_folder = [9,21]
-    folder_paths = glob.glob(data_path + "*")
+    imgs_folder_paths = glob.glob(data_path + "*")
     images = [] # Initialize a list to record images
     labels = [] # Initialize a list to record labels
-    for folder_path in folder_paths:
+    for folder_path in imgs_folder_paths:
         index = int(folder_path[-2:]) # Get the index embeded in the folder path
         if index in target_folders:
             # Assign labels
@@ -480,7 +499,7 @@ def select_threshold(val, labels,anomaly_at_top=True,k=10, to_print = False):
     best_target = 0 # A recorder of the best value of the target variable -- assume the larger, the better
 
     # Sort the edistance and yval based on pval from high to low (in order to measure the Precision at K)
-    rank = np.argsort(ceof*val) # Rank the data: Sort from the Largest to the Smallest if the anomaly is at the top; reverse if not
+    rank = np.argsort(coef*val) # Rank the data: Sort from the Largest to the Smallest if the anomaly is at the top; reverse if not
     # If we want a rank from the smallest to the largest, we need to change the label here
     val_ranked = val[rank] # Sort the edistance
     labels_ranked = labels[rank] # Sort the yval with the same order
@@ -1296,13 +1315,18 @@ def evaludate_pc(data,labels):
 
 
 ## Support Function for the deep autoencoder
-def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,epochs_size = 80, batch_size = 256,dropout =0,image = True, save_model = True):
+def train_autoencoder(AnomalyData, data, labels,encoder_layers_size,decoder_layers_size,epochs_size = 80, batch_size = 256,dropout =0,image = True, save_model = True):
     """
+    AnomalyData: an instance of the class Anomaly Data
     data is a matrix of size m*n, where m is the sample size, and n is the dimenions
     labels is a vector of length n
     encoder_layers_size: an array that records the size of each hidden layer in the encoder; if there is only one hidden encoder layer, this will be a numeric value
     decoder_layers_size: an array that records the size of each hidden layer in the decoder; if there is only one hidden decoder layer, this will be a numeric value
     """
+    #config = tf.ConfigProto()
+    #config.gpu_options.per_process_gpu_memory_fraction = 0.3
+    #set_session(tf.Session(config=config))
+
     # Generate and Compile a Deep Autoencoder and its encoder
     data_dimensions = data.shape[1] # The dimension = # columns
     autoencoder,encoder = compile_autoencoder(data_dimensions,encoder_layers_size,decoder_layers_size,dropout = dropout)
@@ -1330,7 +1354,7 @@ def train_autoencoder(data, labels,encoder_layers_size,decoder_layers_size,epoch
 
     # Save and output the model
     if save_model:
-        autoencoder.save('model_autoencoder.h5')
+        autoencoder.save(AnomalyData.model_path)
     return autoencoder,encoder
 
 def compile_autoencoder(data_length, encoder_layers_size,decoder_layers_size,dropout = 0):
