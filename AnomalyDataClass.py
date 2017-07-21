@@ -63,7 +63,7 @@ def set_synthetic(folder_path):
     data_path = 'data/'
     n_components = 14
     is_image_data = False
-    n_layers = 2
-    multiplier = 1.5
+    n_layers = 3
+    multiplier = 1.2
     synthetic = AnomalyData(data_name,folder_path,data_path,n_components,is_image_data=is_image_data,n_layers=n_layers,multiplier=multiplier)
     return synthetic

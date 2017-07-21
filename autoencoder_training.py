@@ -3,9 +3,7 @@ import pandas as pd
 import os,sys,inspect
 from support_functions import *
 
-
 def read_and_train(read_func,parm=''):
-    print('parm: ' + parm)
     # Read the data
     AnomalyData, data_train, data_test, labels_train, labels_test=read_func(parm)
 
@@ -35,8 +33,8 @@ def read_and_train(read_func,parm=''):
     dir()
 
 # Update models according to the list
-#read_and_train(read_mnist_data)
-#read_and_train(get_yale_faces_data)
+read_and_train(read_mnist_data)
+read_and_train(get_yale_faces_data)
 read_and_train(read_synthetic_data,parm='Synthetic/')
 read_and_train(read_synthetic_data,parm='Synthetic_2/')
 read_and_train(read_synthetic_data,parm='Synthetic_3/')

@@ -54,17 +54,17 @@ class Results:
 
 
 ## Function to Run Detection on any dataset
-def read_and_detect(read_func,detect_func,to_print = False):
+def read_and_detect(read_func,detect_func,param_read='',to_print = False):
     """
     Function to trigger the process of reading data and anomaly detection
     parameters: 
     - read_func: a function to read data, labels and parameters
     - detect_func: a function to detect anomlies
+    - param_read: parameter for read_func -- for synthetic dataset
     - to_print: to_print: a trigger of printing out all the visualization and results
     """
     # Read the data
-    AnomalyData, data_train, data_test, labels_train, labels_test=read_func()
-
+    AnomalyData, data_train, data_test, labels_train, labels_test=read_func(param_read)
     # Run Anomaly Detection
     if to_print:
         detect_func(AnomalyData,data_train, data_test,labels_train,labels_test,to_print = to_print)
@@ -1323,7 +1323,7 @@ def evaludate_pc(data,labels):
 
 
 ## Support Function for the deep autoencoder
-def train_autoencoder(AnomalyData, data, labels,encoder_layers_size,decoder_layers_size,epochs_size = 80, batch_size = 256,dropout =0,image = True, save_model = True):
+def train_autoencoder(AnomalyData, data, labels,encoder_layers_size,decoder_layers_size,epochs_size = 80, batch_size = 256,dropout =0,save_model = True):
     """
     AnomalyData: an instance of the class Anomaly Data
     data is a matrix of size m*n, where m is the sample size, and n is the dimenions
@@ -1350,7 +1350,7 @@ def train_autoencoder(AnomalyData, data, labels,encoder_layers_size,decoder_laye
     x_test = data_normal[test_ind,:]
 
     # Normalize the Data
-    if image:
+    if AnomalyData.is_image_data:
         x_train = x_train.astype('float32') / 255.
         x_test = x_test.astype('float32') / 255.
     # Run the model
