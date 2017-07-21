@@ -216,6 +216,8 @@ def detection_with_pca_reconstruction_error(AnomalyData,data_train,data_test,lab
         train_test_with_reconstruction_error(data_train, data_train_pca, data_test, data_test_pca, labels_train, labels_test,AnomalyData.k,to_print = to_print)
     else:  # Return results in numeric values
         results = train_test_with_reconstruction_error(data_train, data_train_pca, data_test, data_test_pca, labels_train, labels_test,AnomalyData.k,to_print = to_print)
+        results.data_name = AnomalyData.data_name # Record the data name
+        results.detect_model = 'PCA Reconstruction' # Record the detection model name
         return results
 
 def detection_with_pca_gaussian(AnomalyData,data_train, data_test,labels_train,labels_test,to_print = False):
@@ -244,6 +246,8 @@ def detection_with_pca_gaussian(AnomalyData,data_train, data_test,labels_train,l
         train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,AnomalyData.k,to_print=to_print)
     else:  # Return results in numeric values
         results = train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,AnomalyData.k,to_print=to_print)
+        results.data_name = AnomalyData.data_name # Record the data name
+        results.detect_model = 'PCA Guassian' # Record the detection model name
         return results
 
 def detection_with_autoencoder_reconstruction_error(AnomalyData,data_train, data_test,labels_train,labels_test,to_print = False):
@@ -281,7 +285,9 @@ def detection_with_autoencoder_reconstruction_error(AnomalyData,data_train, data
     if to_print: # Print result
         train_test_with_reconstruction_error(data_train, data_train_reconstructed, data_test, data_test_reconstructed, labels_train, labels_test,AnomalyData.k,to_print = to_print)
     else:  # Return results in numeric values
-        results = train_test_with_reconstruction_error(data_train, data_train_reconstructed, data_test, data_test_reconstructed, labels_train, labels_test,k,to_print = to_print)
+        results = train_test_with_reconstruction_error(data_train, data_train_reconstructed, data_test, data_test_reconstructed, labels_train, labels_test,AnomalyData.k,to_print = to_print)
+        results.data_name = AnomalyData.data_name # Record the data name
+        results.detect_model = 'Autoencoder Reconstruction' # Record the detection model name
         return results
 
 def detection_with_autoencoder_gaussian(AnomalyData,data_train, data_test,labels_train,labels_test,to_print = False):
@@ -324,6 +330,8 @@ def detection_with_autoencoder_gaussian(AnomalyData,data_train, data_test,labels
         train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,AnomalyData.k,whitened = True, plot_comparison = to_print, to_print=to_print)
     else:  # Return results in numeric values
         results = train_test_with_gaussian(data_train_encoded, data_test_encoded, labels_train, labels_test,AnomalyData.k,whitened = True, plot_comparison = to_print, to_print=to_print)
+        results.data_name = AnomalyData.data_name # Record the data name
+        results.detect_model = 'Autoencoder Gaussian' # Record the detection model name
         return results
 
 ## Support Functions for Yale Faces Data
@@ -585,7 +593,7 @@ def select_threshold_probability(p, labels, k=10, to_print = False):
     This function finds the best threshold value to detect the anomaly given the PDF values and True label Values
     """
     # The data points at the tail (with low distance values) are likely to be anomaly
-    best_epsilon = select_threshold(p, labels,r,anomaly_at_top = False, k=k, to_print = to_print)
+    best_epsilon = select_threshold(p, labels,anomaly_at_top = False, k=k, to_print = to_print)
     return best_epsilon
 
 def estimate_gaussian(X):
@@ -717,8 +725,8 @@ def fit_gaussian_with_whiten_and_cv(data,labels,folds,k,to_print = True):
             results = eval_prediction(preds,labels_test_ranked,k)
             target = results.F # Set the F score as the target to optimize
             target_list.append(target) # Save the f1 score of the current training & testing combination
-            preck_list.append(result.PrecK)
-            rprec_list.append(Result.RPrec)
+            preck_list.append(results.PrecK)
+            rprec_list.append(results.RPrec)
 
         target_avg = sum(target_list)/len(target_list) # The average target for the current lambda
         rprec_avg = sum(rprec_list)/len(rprec_list)

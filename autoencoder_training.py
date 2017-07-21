@@ -4,9 +4,10 @@ import os,sys,inspect
 from support_functions import *
 
 
-def read_and_train(read_func):
+def read_and_train(read_func,parm=''):
+    print('parm: ' + parm)
     # Read the data
-    AnomalyData, data_train, data_test, labels_train, labels_test=read_func()
+    AnomalyData, data_train, data_test, labels_train, labels_test=read_func(parm)
 
     # Merge the data
     data = np.concatenate((data_train, data_test))
@@ -36,7 +37,7 @@ def read_and_train(read_func):
 # Update models according to the list
 #read_and_train(read_mnist_data)
 #read_and_train(get_yale_faces_data)
-read_and_train(read_synthetic_data('Synthetic/'))
-read_and_train(read_synthetic_data('Synthetic_2/'))
-read_and_train(read_synthetic_data('Synthetic_3/'))
-read_and_train(read_synthetic_data('Synthetic_4/'))
+read_and_train(read_synthetic_data,parm='Synthetic/')
+read_and_train(read_synthetic_data,parm='Synthetic_2/')
+read_and_train(read_synthetic_data,parm='Synthetic_3/')
+read_and_train(read_synthetic_data,parm='Synthetic_4/')
