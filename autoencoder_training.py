@@ -5,7 +5,10 @@ from support_functions import *
 
 def read_and_train(read_func,parm=''):
     # Read the data
-    AnomalyData, data_train, data_test, labels_train, labels_test=read_func(parm)
+    if len(parm) == 0: # no param
+        AnomalyData, data_train, data_test, labels_train, labels_test=read_func()
+    else:
+        AnomalyData, data_train, data_test, labels_train, labels_test=read_func(parm)
 
     # Merge the data
     data = np.concatenate((data_train, data_test))
