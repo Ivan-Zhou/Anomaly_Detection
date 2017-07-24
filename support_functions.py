@@ -986,7 +986,7 @@ def plot_data_2d(data, labels):
     data_encoded,n,m = pca_all_processes(data,labels,n_components,decode = False)
     
     # Print the % variance achieved with 2 PC
-    compare_var(data,data_encoded, to_print = True)
+    #compare_var(data,data_encoded, to_print = True)
 
     num_data = min(len(data),4000) # We plot in maximum 4000 points
     data_subset = data[:num_data]
@@ -995,6 +995,28 @@ def plot_data_2d(data, labels):
     # Create multiple scatterplots of the subsets of the encoded data
     plot_data_subsets_2d(data_encoded,labels)
     
+def plot_data_2d_autoencoder(AnomalyData,data, labels):
+    """
+    This function encode the data and plot the 2D representation of the encoded data with PCA
+    """
+    
+
+    # Specify the model config
+    data_dimensions=data.shape[1] # No.dimensions in the data
+    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions,AnomalyData.n_layers,AnomalyData.multiplier)
+    # Extract the saved autoencoder model
+    autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_layers_size, decoder_layers_size) 
+    autoencoder = load_model(AnomalyData.model_path) # Load the saved model
+    # Extract the encoder model from the autoencoder model
+    encoder_n_layers = len(encoder_layers_size) # Get the number of layers in the encoder
+    weights_encoder = autoencoder.get_weights()[0:encoder_n_layers+1] # The first half of the autoencoder model is an encoder model
+    encoder.set_weights(weights_encoder) # Set weights
+
+    # Encode the data in the training and the testing set
+    data_encoded = encode_data(encoder, data)
+
+    # Anomaly Detection with the Gaussian Model: need to whiten the covariance
+    plot_data_2d(data_encoded, labels)
     
 def plot_data_subsets_2d(data, labels):
     """
@@ -1235,7 +1257,6 @@ def pca_all_processes(data,labels,n_components, plot_eigenfaces_bool = False,dec
         plot_eigenfaces(pca_matrix[:,:n_components],height, width)
         print()
     
-    
     if decode: # We want to have the decoded data
         # Encode and then decode the entire dataset with the pca_matrix
         data_decoded = reconstruct_with_pca(data, component_mean, pca_matrix, n_components)
@@ -1287,13 +1308,14 @@ def plot_compare_after_reconst(img_matrix_reconst,imgs_matrix,height,width):
 
         plt.show()
 
-def compare_var(data, data_pca,pca_encoding_dimension,to_print = False):
+def compare_var(data, data_pca,to_print = False):
     '''
     This function compare the % variance achieved with the PCA Encoding 
     '''
     var_retained = np.var(data_pca)/np.var(data)
     if to_print:
         dimension_origin = data.shape[1]
+        pca_encoding_dimension = data_pca.shape[1]
         print('Summary of PCA Encoding: ')
         print('Number of Dimension in the Original Dataset: ' + str(dimension_origin))
         print('Number of Dimension in the PCA-Encoded Dataset: '+ str(pca_encoding_dimension))
@@ -1331,14 +1353,9 @@ def train_autoencoder(AnomalyData, data, labels,encoder_layers_size,decoder_laye
     encoder_layers_size: an array that records the size of each hidden layer in the encoder; if there is only one hidden encoder layer, this will be a numeric value
     decoder_layers_size: an array that records the size of each hidden layer in the decoder; if there is only one hidden decoder layer, this will be a numeric value
     """
-    #config = tf.ConfigProto()
-    #config.gpu_options.per_process_gpu_memory_fraction = 0.3
-    #set_session(tf.Session(config=config))
-
     # Generate and Compile a Deep Autoencoder and its encoder
     data_dimensions = data.shape[1] # The dimension = # columns
     autoencoder,encoder = compile_autoencoder(data_dimensions,encoder_layers_size,decoder_layers_size,dropout = dropout)
-
     # Prepare the input
     # Select only the Normal Image Dataset
     data_normal = data[labels == 0]
@@ -1376,7 +1393,6 @@ def compile_autoencoder(data_length, encoder_layers_size,decoder_layers_size,dro
     inputs = Input(shape=(data_length,))
 
     # Find the number of layers in the encoder and decoder
-    
     n_decoder_layers = len(decoder_layers_size)
 
     # "encoded" is the encoded representation of the input
