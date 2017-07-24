@@ -994,13 +994,11 @@ def plot_data_2d(data, labels):
     scatter_plot_anomaly(data_encoded, labels,'Scatterplot of the entire dataset')
     # Create multiple scatterplots of the subsets of the encoded data
     plot_data_subsets_2d(data_encoded,labels)
-    
+
 def plot_data_2d_autoencoder(AnomalyData,data, labels):
     """
     This function encode the data and plot the 2D representation of the encoded data with PCA
     """
-    
-
     # Specify the model config
     data_dimensions=data.shape[1] # No.dimensions in the data
     encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions,AnomalyData.n_layers,AnomalyData.multiplier)
