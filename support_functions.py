@@ -975,7 +975,32 @@ def scatter_plot_anomaly(data, labels,title = ''):
         plt.title(title)
     plt.show()
 
-def plot_data_2d(data, labels):
+def encode_and_plot_2d(read_func,param=''):
+    """
+    This function reads the data and call the function to do encoding and visualization
+    """
+    # Read data
+    if len(param) == 0: # no parameter
+        AnomalyData, data_train, data_test, labels_train, labels_test=read_func()
+    else:
+        AnomalyData, data_train, data_test, labels_train, labels_test=read_func(param) 
+    # Visualization
+    print('Here is the 2D Visualization of the encoded data stored in the folder ' + AnomalyData.folder_path +':')
+    plot_encoded_data_2d(AnomalyData,data_train,labels_train)
+
+def plot_encoded_data_2d(AnomalyData,data, labels):
+    """
+    This function visualize the encoded data with PCA and then Autoencoder
+    """
+    print('Below is the 2D Representation of the encoded data with PCA:')
+    plot_encoded_data_2d_pca(data, labels)
+    print()
+
+    print('Below is the 2D Representation of the encoded data with Deep Autoencoder')
+    plot_encoded_data_2d_autoencoder(AnomalyData,data, labels)
+    print()
+    
+def plot_encoded_data_2d_pca(data, labels):
     """
     This function creates a 2D Visualization of the input dataset and color with labels.
     Here I use PCA to downsize the multivariate input data into 2-Dimensions.
@@ -995,9 +1020,9 @@ def plot_data_2d(data, labels):
     # Create multiple scatterplots of the subsets of the encoded data
     plot_data_subsets_2d(data_encoded,labels)
 
-def plot_data_2d_autoencoder(AnomalyData,data, labels):
+def plot_encoded_data_2d_autoencoder(AnomalyData,data, labels):
     """
-    This function encode the data and plot the 2D representation of the encoded data with PCA
+    This function encode the data with Autoencoder and plot the 2D representation of the encoded data with PCA
     """
     # Specify the model config
     data_dimensions=data.shape[1] # No.dimensions in the data
@@ -1010,41 +1035,56 @@ def plot_data_2d_autoencoder(AnomalyData,data, labels):
     weights_encoder = autoencoder.get_weights()[0:encoder_n_layers+1] # The first half of the autoencoder model is an encoder model
     encoder.set_weights(weights_encoder) # Set weights
 
+    print('Below is a summery of the encoder model: ')
+    print(encoder.summary())
+    print("\n The output shape of the encoder model: ")
+    print(encoder.output_shape)
+
     # Encode the data in the training and the testing set
     data_encoded = encode_data(encoder, data)
 
-    # Anomaly Detection with the Gaussian Model: need to whiten the covariance
-    plot_data_2d(data_encoded, labels)
+    # Plot a 2D Viz of the encoded data with PCA
+    plot_encoded_data_2d_pca(data_encoded, labels)
     
 def plot_data_subsets_2d(data, labels):
     """
     This function takes a few subsets of data and creates scatterplots of each of them
     
     """
-    # Shuffle the index
-    ind = np.hstack(range(len(labels)))
-    shuffle(ind)
-    data_shuffled = data[ind]
-    labels_shuffled = labels[ind]
-    
     step_size = 500  # Number of points contained in each plot
-    
-    # Create figure with 5x5 sub-plots.
-    fig, axes = plt.subplots(3, 3,figsize=(15,15))
-    fig.subplots_adjust(hspace=0.1, wspace=0.01)
+    if len(data) >= 2*step_size: # Otherwise, there is no need to plot subplots
+        # Shuffle the index
+        ind = np.hstack(range(len(labels)))
+        shuffle(ind)
+        data_shuffled = data[ind]
+        labels_shuffled = labels[ind]
+        
+        max_n_plots_per_row = 3 # maximum no of plots per row
+        max_rows = 3 # maximum no of plots per column
+        max_n_plots = int(len(data)/step_size) # maximum no of plots we can plot
+        max_n_rows = int(max_n_plots/max_n_plots_per_row) # maximum no of rows we can plot
 
-    for i, ax in enumerate(axes.flat): 
-        start = i*step_size
-        end = (i+1)*step_size
-        data_subset = data_shuffled[start:end,:] # Get a subset of data with size 500 
-        labels_subset = labels_shuffled[start:end] # Get the corresponding labels 
-        ax.scatter(data_subset[:,0],data_subset[:,1],c = labels_subset)
-        ax.set_title('Scatterplot of ' + str(step_size) + " sample points (No." + str(i+1)+")")
-        # Remove ticks from the plot.
-        ax.set_xticks([])
-        ax.set_yticks([])
-    
-    plt.show()        
+        n_rows = min(max(1,max_n_rows),max_rows) # Ensure the n_rows will be between 1 and max_rows
+        n_cols = min(max_n_plots_per_row,max_n_plots)
+        print('n_rows:' + str(n_rows))
+        print('n_cols:' + str(n_cols))
+
+        # Create figure with 5x5 sub-plots.
+        fig, axes = plt.subplots(n_rows, n_cols,figsize=(15,15))
+        fig.subplots_adjust(hspace=0.1, wspace=0.01)
+
+        for i, ax in enumerate(axes.flat): 
+            start = i*step_size
+            end = (i+1)*step_size
+            data_subset = data_shuffled[start:end,:] # Get a subset of data with size 500 
+            labels_subset = labels_shuffled[start:end] # Get the corresponding labels 
+            ax.scatter(data_subset[:,0],data_subset[:,1],c = labels_subset)
+            ax.set_title('Scatterplot of ' + str(step_size) + " sample points (No." + str(i+1)+")")
+            # Remove ticks from the plot.
+            ax.set_xticks([])
+            ax.set_yticks([])
+        
+        plt.show()        
 
 def plot_heatmap_of_cov(data):
     """
