@@ -7,10 +7,12 @@ from scipy import stats
 from scipy.stats import multivariate_normal
 import re
 import glob
+import seaborn as sns
 from operator import itemgetter 
 import random
 from random import shuffle
 import tensorflow as tf
+
 from keras.layers import Input, Dense
 from keras.models import Model
 from keras.models import load_model
@@ -986,7 +988,7 @@ def encode_and_plot_2d(read_func,param=''):
         AnomalyData, data_train, data_test, labels_train, labels_test=read_func(param) 
     # Visualization
     print('Here is the 2D Visualization of the encoded data stored in the folder ' + AnomalyData.folder_path +':')
-    plot_encoded_data_2d(AnomalyData,data_train,labels_train)
+    #plot_encoded_data_2d(AnomalyData,data_train,labels_train)
 
 def plot_encoded_data_2d(AnomalyData,data, labels):
     """
@@ -1000,15 +1002,14 @@ def plot_encoded_data_2d(AnomalyData,data, labels):
     plot_encoded_data_2d_autoencoder(AnomalyData,data, labels)
     print()
     
-def plot_encoded_data_2d_pca(data, labels):
+def plot_encoded_data_2d_pca(AnomalyData,data, labels):
     """
     This function creates a 2D Visualization of the input dataset and color with labels.
     Here I use PCA to downsize the multivariate input data into 2-Dimensions.
     Note: the input data has a shape of m*n, where m is the sample size and n is # of dimensions
     """
-    n_components = 2
     # Compute PCA with training dataset
-    data_encoded,n,m = pca_all_processes(data,labels,n_components,decode = False)
+    data_encoded,n,m = pca_all_processes(data,labels,AnomalyData.n_components,decode = False)
     
     # Print the % variance achieved with 2 PC
     #compare_var(data,data_encoded, to_print = True)
@@ -1016,7 +1017,7 @@ def plot_encoded_data_2d_pca(data, labels):
     num_data = min(len(data),4000) # We plot in maximum 4000 points
     data_subset = data[:num_data]
     # Create a Scatterplot of the entire encoded data
-    scatter_plot_anomaly(data_encoded, labels,'Scatterplot of the entire dataset')
+    scatter_plot_anomaly(data_encoded, labels,'Scatterplot                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      t of the entire dataset')
     # Create multiple scatterplots of the subsets of the encoded data
     plot_data_subsets_2d(data_encoded,labels)
 
@@ -1024,24 +1025,7 @@ def plot_encoded_data_2d_autoencoder(AnomalyData,data, labels):
     """
     This function encode the data with Autoencoder and plot the 2D representation of the encoded data with PCA
     """
-    # Specify the model config
-    data_dimensions=data.shape[1] # No.dimensions in the data
-    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions,AnomalyData.n_layers,AnomalyData.multiplier)
-    # Extract the saved autoencoder model
-    autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_layers_size, decoder_layers_size) 
-    autoencoder = load_model(AnomalyData.model_path) # Load the saved model
-    # Extract the encoder model from the autoencoder model
-    encoder_n_layers = len(encoder_layers_size) # Get the number of layers in the encoder
-    weights_encoder = autoencoder.get_weights()[0:encoder_n_layers+1] # The first half of the autoencoder model is an encoder model
-    encoder.set_weights(weights_encoder) # Set weights
-
-    print('Below is a summery of the encoder model: ')
-    print(encoder.summary())
-    print("\n The output shape of the encoder model: ")
-    print(encoder.output_shape)
-
-    # Encode the data in the training and the testing set
-    data_encoded = encode_data(encoder, data)
+    
 
     # Plot a 2D Viz of the encoded data with PCA
     plot_encoded_data_2d_pca(data_encoded, labels)
@@ -1117,7 +1101,10 @@ def plot_heatmap(data,title = ''):
     """
     This function plots a heatmap with the input data matrix 
     """
-    plt.imshow(data, cmap='jet', interpolation='nearest') # Create a heatmap
+    plt.figure(figsize=(10,5))
+    cmap = sns.diverging_palette(220, 10, as_cmap=True)
+    #plt.imshow(data, cmap='jet', interpolation='nearest') # Create a heatmap
+    plt.imshow(data, cmap=cmap, interpolation='nearest') # Create a heatmap
     plt.colorbar() # Add a Color Bar by the side
     if len(title) > 0:
         plt.title(title)
@@ -1546,6 +1533,161 @@ def frange(start, stop, step):
         yield i
         i += step
 
+def encode_and_viz_corr(AnomalyData, data,labels):
+    """
+    This function encode the data and vizualize the correlation after encoding via PCA and Autoencoder separately
+    """    
+    print('Below is the 2D Visualization of the correlation in the encoded data with PCA:')
+    encode_and_viz_corr_pca(AnomalyData, data,labels)
+    print('Below is the 2D Visualization of the correlation in the encoded data with Deep Autoencoder:')
+    encode_and_viz_corr_autoencoder(AnomalyData, data,labels)
 
+def encode_and_viz_corr_pca(AnomalyData, data,labels):
+    """
+    This function encode the data and vizualize the correlation after encoding via PCA
+    """    
+    # Compute PCA with the dataset
+    data_encoded,n,m = pca_all_processes(data,labels,AnomalyData.n_components,decode = False)
+    # Visualize the correlation in the encoded data 
+    
+    viz_corr_after_encoding(data_encoded, labels)
+    
+def encode_and_viz_corr_autoencoder(AnomalyData, data,labels):
+    """
+    This function encode the data and vizualize the correlation after encoding via Deep Autoencoder
+    """   
+    # Specify the model config
+    data_dimensions=data.shape[1] # No.dimensions in the data
+    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions,AnomalyData.n_layers,AnomalyData.multiplier)
+    # Extract the saved autoencoder model
+    autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_layers_size, decoder_layers_size) 
+    autoencoder = load_model(AnomalyData.model_path) # Load the saved model
+    # Extract the encoder model from the autoencoder model
+    encoder_n_layers = len(encoder_layers_size) # Get the number of layers in the encoder
+    weights_encoder = autoencoder.get_weights()[0:encoder_n_layers+1] # The first half of the autoencoder model is an encoder model
+    encoder.set_weights(weights_encoder) # Set weights
+
+    print('Below is a summery of the encoder model: ')
+    print(encoder.summary())
+    print("\n The output shape of the encoder model: ")
+    print(encoder.output_shape)
+
+    # Encode the data
+    data_encoded = encode_data(encoder, data)
+    viz_corr_after_encoding(data_encoded, labels)
+    
+def viz_corr_after_encoding(data_encoded, labels, n = 6):
+    """
+    This function plots correlations in the encoded data. 
+    n: Number of couples of dimensions to be selected
+    """
+    corr = np.corrcoef(data_encoded,rowvar=False) # Compute the correlation matrix
+    indices = select_dims_with_highest_corr(corr, n) # Get the indices
+    plot_high_corr(data_encoded, labels,corr,indices) # Plot the scatterplots of the dimensions with the highest correlation
+    
+    print('Below: Heatmap of the Correlation Matrix')
+    plot_heatmap_corr(corr,indices) # Plot the heatmap of the correlation matrix
+    
+def select_dims_with_highest_corr(corr, n):
+    """
+    The function selects the couple of dimensions with the highest correlation (regardless of signs)
+    corr: correlation matrix
+    n: # of couples of dimension to be returned
+    """
+    if np.sum(np.isnan(corr))>0:
+        print('There is NaN in the correlation matrix!')
+        corr,nan_marker = process_nan_in_matrix(corr)
+    corr_copy = np.absolute(np.tril(corr,-1)) # Create a copy of only the lower triangle part of the matrix and take absolute value
+    indices = [] # Initialize a list to record the coordinates
+    n_dim = len(corr_copy)
+    for i in range(0,n):
+        index_max = corr_copy.argmax()
+        y = int(index_max/n_dim) # Find row index
+        x = index_max % n_dim # Find column index
+        corr_copy[y,x] = 0 # Set as 0
+        indices.append([y,x]) # Row and Column index
+    return indices
+
+def process_nan_in_matrix(matrix):
+    """
+    Modify NAN in matrix and convert to array
+    """
+    # Create a Marker for nan value inside the matrix
+    data_nan_marker = np.isnan(matrix)
+
+    # Replace nan with zero, and create an array from the matrix
+    data = matrix # Create a copy
+    data = np.nan_to_num(data) # Convert nan with 0
+    data = np.asarray(data)
+    return data, data_nan_marker
+
+def plot_high_corr(data, labels,corr,indices):
+    """
+    This function creates the scatterplots of the dimensions with the highest correlations
+    indices: the indeices of dimensions in list form
+    """
+    n_plots = len(indices)
+    n_cols = min(2,n_plots) # Set the number of columns
+    n_rows = int(n_plots/n_cols) # Set the number of rows
+    n_data = min(500,len(data)) # Set the number of data points to plot
+    data_subset = data[:n_data,:] # Get a subset of data
+    labels_subset = labels[:n_data] # Get a subset of labels 
+
+    # Create figure with 5x5 sub-plots.
+    fig, axes = plt.subplots(n_rows, n_cols,figsize=(15,15))
+    fig.subplots_adjust(hspace=0.2, wspace=0.1)
+
+    for i, ax in enumerate(axes.flat): 
+        dim_y = indices[i][0] # Column Index
+        dim_x = indices[i][1] # Row Index
+        ax.scatter(data_subset[:,dim_y],data_subset[:,dim_x],c = labels_subset)
+        ax.set_title('# Points: ' +str(n_data)+'. Correlation: ' + str(corr[dim_y,dim_x]))
+        # Remove ticks from the plot.
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xlabel('Dimension: ' + str(dim_x))
+        ax.set_ylabel('Dimension: ' + str(dim_y))
+    plt.suptitle('Dimensions with the Highest Correlation')
+    plt.show() 
+
+def plot_heatmap_corr(corr,indices,step_size = 50):
+    """
+    This function plots out the heatmap of the correlation matrix
+    Sometimes the correlation matrix is too large to be plotted in one graph, so we cut it into pieces and plot individually
+    step_size: # Maximum number of dimensions to be covered by each axis in each plot
+    """
+    n_dimensions = len(corr) # Total number of dimensions in the corralation matrix
+    corr = np.tril(corr,-1) # Keep only the lower triangle part of the matrix and take absolute value
+    for i in range(0,n_dimensions,step_size):
+        x_lb = i # Lower bound on x-axis
+        x_ub = min(x_lb+step_size,n_dimensions) # Upper bound on x-axis (n_dimensions is the upper limit)
+        for j in range(i,n_dimensions,step_size):
+            y_lb = j # Lower bound on y-axis
+            y_ub = min(y_lb + step_size,n_dimensions) # Upper bound on y-axis (n_dimensions is the upper limit)
+            corr_sub = corr[y_lb:y_ub,x_lb:x_ub]
+            title = 'The Correlation between Dimension '+str(x_lb)+'-'+str(x_ub)+' (x) vs. '+str(y_lb)+'-'+str(y_ub)+' (y)'
+            plot_corr_triangle(corr_sub, title)
+            
+def plot_corr_triangle(corr,title=''):
+    if corr.shape[0] == corr.shape[1]: # is a square matrix -- plot only the lower matrix
+        # Generate a mask for the upper triangle
+        mask = np.zeros_like(corr, dtype=np.bool)
+        mask[np.triu_indices_from(mask)] = True
+
+        # Set up the matplotlib figure
+        f, ax = plt.subplots(figsize=(11, 9))
+
+        # Generate a custom diverging colormap
+        cmap = sns.diverging_palette(220, 10, as_cmap=True)
+        xticks = np.array(range(150,200,10))
+        yticks = np.array(range(150,200,10))
+        # Draw the heatmap with the mask and correct aspect ratio
+        #g = sns.heatmap(corr, mask=mask, cmap=cmap, vmax=.3, center=0,square=True, linewidths=.5, cbar_kws={"shrink": .5})
+        g = sns.heatmap(corr, mask=mask, cmap=cmap, square=True, linewidths=.5, cbar_kws={"shrink": .5})
+        g.set_title(title,fontsize=18) # can also get the figure from plt.gcf()
+        plt.show()
+    else: # -- plot the entire matrix
+        plot_heatmap(corr,title)
+    print()
 
 
