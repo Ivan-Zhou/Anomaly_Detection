@@ -1533,6 +1533,17 @@ def frange(start, stop, step):
         yield i
         i += step
 
+def read_encode_viz_corr(read_func,param = ''):
+    """
+    Read in the read function and call encode & viz
+    """
+    if len(param) == 0:
+        AnomalyData, data_train, data_test, labels_train, labels_test=read_func()
+    else:
+        AnomalyData, data_train, data_test, labels_train, labels_test=read_func(param)
+    print('The data has been extracted from the folder: ' + AnomalyData.folder_path)
+    encode_and_viz_corr(AnomalyData, data_train,labels_train)
+
 def encode_and_viz_corr(AnomalyData, data,labels):
     """
     This function encode the data and vizualize the correlation after encoding via PCA and Autoencoder separately
