@@ -211,7 +211,7 @@ def detection_with_pca_reconstruction_error(AnomalyData,data_train,data_test,lab
     data_test_pca = reconstruct_with_pca(data_test,component_mean,pca_matrix,AnomalyData.n_components)
 
     if to_print: 
-        compare_var(data_train, data_train_pca,AnomalyData.n_components,to_print = to_print) # Find the % variance achieved at the current #PC
+        compare_var(data_train, data_train_pca,to_print = to_print) # Find the % variance achieved at the current #PC
 
     # Anomaly Detection with Reconstruction Error
     if to_print: # Print result
@@ -241,7 +241,7 @@ def detection_with_pca_gaussian(AnomalyData,data_train, data_test,labels_train,l
 
     if to_print: 
         data_train_pca = reconstruct_with_pca(data_train, component_mean, pca_matrix, AnomalyData.n_components) # Reconstruct with PCA
-        compare_var(data_train, data_train_pca,AnomalyData.n_components,to_print = to_print) # FInd the % variance achieved at the current #PC
+        compare_var(data_train, data_train_pca,to_print = to_print) # FInd the % variance achieved at the current #PC
 
     # Anomaly Detection with the Gaussian Model
     if to_print: # Print result
@@ -1358,7 +1358,7 @@ def evaludate_pc(data,labels):
     step_size = max(int(data.shape[1]/n_steps),1) 
     for n_components in range(0,data.shape[1]+1,step_size):
         data_pca,pca_matrix, component_mean = pca_all_processes(data,labels,n_components)
-        var_retained = compare_var(data, data_pca,n_components)
+        var_retained = compare_var(data, data_pca)
         var_retained_list.append(var_retained)
         n_components_list.append(n_components)
     plt.plot(n_components_list,var_retained_list)
