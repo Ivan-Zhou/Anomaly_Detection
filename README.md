@@ -45,6 +45,14 @@ Some findings:
 - Autoencoder-based methods work better than PCA-based methods in general. 
 - Gaussian-based methods fail in most of the dataset, partially due to the correlation between latent dimensions after encoding. However, the Autoencoder + Gaussian method succeeded in Synthetic dataset #1, where the anomaly 
 
+> Autoencoder-based methods work better than PCA-based methods in general
+
+![Results_Evaluation_1](/Reports/Screenshots/Results_Evaluation_1.png)
+
+> Autoencoder + Gaussian method succeeds in synthetic #1
+
+![Results_Evaluation_2](/Reports/Screenshots/Results_Evaluation_2.png)
+
 ## Some Visualization
 > The project has not finished yet, so I only show a few visualization here for presentation purpose. The results and conclusions are coming soon.
 
