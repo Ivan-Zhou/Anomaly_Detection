@@ -264,10 +264,11 @@ def detection_with_autoencoder_reconstruction_error(AnomalyData,data_train, data
 
     # Generate and Compile a Deep Autoencoder
     # Specify the model config
-    data_dimensions=data_train.shape[1] # No.dimensions in the data
-    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions,AnomalyData.n_layers,AnomalyData.multiplier)
-    # Extract the saved model
-    autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_layers_size, decoder_layers_size) 
+    data_dimensions=data.shape[1] # No.dimensions in the data
+    encoder_hidden_layers = AnomalyData.encoder_hidden_layers
+    decoder_hidden_layers = AnomalyData.decoder_hidden_layers
+    # Extract the saved autoencoder model
+    autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_hidden_layers, decoder_hidden_layers) 
     autoencoder = load_model(AnomalyData.model_path) # Load the saved model
 
     # Print the summary  of the autoencoder model
@@ -303,10 +304,11 @@ def detection_with_autoencoder_gaussian(AnomalyData,data_train, data_test,labels
         print("Start the Anomaly Detection with Deep Autoencoder and Multivariate Gaussian Model: ")
     # Generate and Compile an encoder
     # Specify the model config
-    data_dimensions=data_train.shape[1] # No.dimensions in the data
-    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions,AnomalyData.n_layers,AnomalyData.multiplier)
+    data_dimensions=data.shape[1] # No.dimensions in the data
+    encoder_hidden_layers = AnomalyData.encoder_hidden_layers
+    decoder_hidden_layers = AnomalyData.decoder_hidden_layers
     # Extract the saved autoencoder model
-    autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_layers_size, decoder_layers_size) 
+    autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_hidden_layers, decoder_hidden_layers) 
     autoencoder = load_model(AnomalyData.model_path) # Load the saved model
     # Extract the encoder model from the autoencoder model
     encoder_n_layers = len(encoder_layers_size) # Get the number of layers in the encoder
@@ -1370,7 +1372,7 @@ def evaludate_pc(data,labels):
 
 
 ## Support Function for the deep autoencoder
-def train_autoencoder(AnomalyData, data, labels,encoder_layers_size,decoder_layers_size,epochs_size = 80, batch_size = 256,dropout =0,save_model = True):
+def train_autoencoder(AnomalyData, data, labels,epochs_size = 80, batch_size = 256,dropout =0,save_model = True):
     """
     AnomalyData: an instance of the class Anomaly Data
     data is a matrix of size m*n, where m is the sample size, and n is the dimenions
@@ -1378,9 +1380,14 @@ def train_autoencoder(AnomalyData, data, labels,encoder_layers_size,decoder_laye
     encoder_layers_size: an array that records the size of each hidden layer in the encoder; if there is only one hidden encoder layer, this will be a numeric value
     decoder_layers_size: an array that records the size of each hidden layer in the decoder; if there is only one hidden decoder layer, this will be a numeric value
     """
-    # Generate and Compile a Deep Autoencoder and its encoder
-    data_dimensions = data.shape[1] # The dimension = # columns
-    autoencoder,encoder = compile_autoencoder(data_dimensions,encoder_layers_size,decoder_layers_size,dropout = dropout)
+    encoder_layers_size
+    decoder_layers_size
+    # Specify the model config
+    data_dimensions=data.shape[1] # No.dimensions in the data
+    encoder_hidden_layers = AnomalyData.encoder_hidden_layers
+    decoder_hidden_layers = AnomalyData.decoder_hidden_layers
+    # Extract the saved autoencoder model
+    autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_hidden_layers, decoder_hidden_layers) 
     # Prepare the input
     # Select only the Normal Image Dataset
     data_normal = data[labels == 0]
@@ -1407,7 +1414,7 @@ def train_autoencoder(AnomalyData, data, labels,encoder_layers_size,decoder_laye
         autoencoder.save(AnomalyData.model_path)
     return autoencoder,encoder
 
-def compile_autoencoder(data_length, encoder_layers_size,decoder_layers_size,dropout = 0):
+def compile_autoencoder(data_length, encoder_hidden_layers,decoder_hidden_layers,dropout = 0):
     '''
     Function to construct and compile the deep autoencoder, then return the model
     Input:
@@ -1418,13 +1425,13 @@ def compile_autoencoder(data_length, encoder_layers_size,decoder_layers_size,dro
     inputs = Input(shape=(data_length,))
 
     # Find the number of layers in the encoder and decoder
-    n_decoder_layers = len(decoder_layers_size)
+    n_decoder_layers = len(encoder_hidden_layers)
 
     # "encoded" is the encoded representation of the input
-    encoded = create_hidden_layers(encoder_layers_size,inputs,dropout = dropout)
+    encoded = create_hidden_layers(encoder_hidden_layers,inputs,dropout = dropout)
     
     # "decoded" is the lossy reconstruction of the input
-    decoded = create_hidden_layers(decoder_layers_size,encoded,dropout = dropout)
+    decoded = create_hidden_layers(decoder_hidden_layers,encoded,dropout = dropout)
 
     # The last output layer: same size as the input
     if dropout>0:
@@ -1569,9 +1576,10 @@ def encode_and_viz_corr_autoencoder(AnomalyData, data,labels):
     """   
     # Specify the model config
     data_dimensions=data.shape[1] # No.dimensions in the data
-    encoder_layers_size, decoder_layers_size = get_deep_model_config(data_dimensions,AnomalyData.n_layers,AnomalyData.multiplier)
+    encoder_hidden_layers = AnomalyData.encoder_hidden_layers
+    decoder_hidden_layers = AnomalyData.decoder_hidden_layers
     # Extract the saved autoencoder model
-    autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_layers_size, decoder_layers_size) 
+    autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_hidden_layers, decoder_hidden_layers) 
     autoencoder = load_model(AnomalyData.model_path) # Load the saved model
     # Extract the encoder model from the autoencoder model
     encoder_n_layers = len(encoder_layers_size) # Get the number of layers in the encoder

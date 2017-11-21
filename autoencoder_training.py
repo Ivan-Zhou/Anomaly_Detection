@@ -18,13 +18,8 @@ def read_and_train(read_func,parm=''):
         data = np.tile(data, (AnomalyData.replicate_for_training,1))
         labels = np.tile(labels, AnomalyData.replicate_for_training)
 
-
-    ## Compile and Train the model
-    # Specify the model config
-    encoder_layers_size, decoder_layers_size = get_deep_model_config(data.shape[1],AnomalyData.n_layers,AnomalyData.multiplier)
-
-    # Training
-    autoencoder,encoder = train_autoencoder(AnomalyData,data, labels,encoder_layers_size,decoder_layers_size,save_model = True)
+    #Train the model
+    autoencoder,encoder = train_autoencoder(AnomalyData,data, labels,save_model = True)
 
     # Delete the data to release the space
     del data
