@@ -1,3 +1,5 @@
+import numpy as np
+
 class AnomalyData:
     """
     Class for Anomaly Dataset that stores all the parameters to be extracted and used in functions
@@ -33,13 +35,15 @@ def set_mnist():
     Function to configure MNIST datasets
     """
     data_name = 'MNIST'
-    folder_path = 'MNIST/'
+    folder_path = 'MNIST_copy/'
     data_path = 'data/'
     n_components = 200
     encoder_hidden_layers = np.array([512,256,128, 64])
     decoder_hidden_layers = np.array([64,128,256,512])
     is_image_data = True
-    mnist = AnomalyData(data_name,folder_path,data_path,n_components,encoder_hidden_layers, decoder_hidden_layers, is_image_data=is_image_data)
+    img_height = 32
+    img_width = 32
+    mnist = AnomalyData(data_name,folder_path,data_path,n_components,encoder_hidden_layers, decoder_hidden_layers, is_image_data=is_image_data, img_height=img_height, img_width = img_width)
     return mnist
 
 def set_faces():

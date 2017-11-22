@@ -1,3 +1,5 @@
+import numpy as np
+from support_functions import *
 # Give Data
 data_train, data_test, labels_train, labels_test = 
 
@@ -19,7 +21,9 @@ n_runs = 10 # Run multiple times to get a stable result - all of the results wil
 Anomaly = AnomalyData(dataset_name, folder_path, data_path, n_components, encoder_hidden_layers. decoder_hidden_layers, is_image_data, img_height, img_width, k, model_path)
 
 #Train the model
-autoencoder,encoder = train_autoencoder(AnomalyData,data, labels,save_model = True)
+data = np.concatenate((data_train, data_test))
+labels = np.concatenate((labels_train, labels_test))
+autoencoder,encoder = train_autoencoder(Anomaly,data, labels,save_model = True)
 
 # Run detection models
 print('Start anomaly detection:')
@@ -32,7 +36,7 @@ for run in range(n_runs): # Run multiple times and get the results
     print('Run #' + str(run+1) + ' starts: ')
     for i, detect_func in enumerate(detect_funcs):
         print('Execute Model #' + str(i))
-        result = detect_func(AnomalyData,data_train, data_test,labels_train,labels_test,to_print = False)
+        result = detect_func(Anomaly,data_train, data_test,labels_train,labels_test,to_print = False)
         results.append(result)
 
 # Save the data and labels

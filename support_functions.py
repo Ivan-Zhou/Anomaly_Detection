@@ -264,7 +264,7 @@ def detection_with_autoencoder_reconstruction_error(AnomalyData,data_train, data
 
     # Generate and Compile a Deep Autoencoder
     # Specify the model config
-    data_dimensions=data.shape[1] # No.dimensions in the data
+    data_dimensions=data_train.shape[1] # No.dimensions in the data
     encoder_hidden_layers = AnomalyData.encoder_hidden_layers
     decoder_hidden_layers = AnomalyData.decoder_hidden_layers
     # Extract the saved autoencoder model
@@ -304,14 +304,14 @@ def detection_with_autoencoder_gaussian(AnomalyData,data_train, data_test,labels
         print("Start the Anomaly Detection with Deep Autoencoder and Multivariate Gaussian Model: ")
     # Generate and Compile an encoder
     # Specify the model config
-    data_dimensions=data.shape[1] # No.dimensions in the data
+    data_dimensions=data_train.shape[1] # No.dimensions in the data
     encoder_hidden_layers = AnomalyData.encoder_hidden_layers
     decoder_hidden_layers = AnomalyData.decoder_hidden_layers
     # Extract the saved autoencoder model
     autoencoder, encoder = compile_autoencoder(data_dimensions,encoder_hidden_layers, decoder_hidden_layers) 
     autoencoder = load_model(AnomalyData.model_path) # Load the saved model
     # Extract the encoder model from the autoencoder model
-    encoder_n_layers = len(encoder_layers_size) # Get the number of layers in the encoder
+    encoder_n_layers = len(encoder_hidden_layers) # Get the number of layers in the encoder
     weights_encoder = autoencoder.get_weights()[0:encoder_n_layers+1] # The first half of the autoencoder model is an encoder model
     encoder.set_weights(weights_encoder) # Set weights
 
@@ -1377,13 +1377,9 @@ def train_autoencoder(AnomalyData, data, labels,epochs_size = 80, batch_size = 2
     AnomalyData: an instance of the class Anomaly Data
     data is a matrix of size m*n, where m is the sample size, and n is the dimenions
     labels is a vector of length n
-    encoder_layers_size: an array that records the size of each hidden layer in the encoder; if there is only one hidden encoder layer, this will be a numeric value
-    decoder_layers_size: an array that records the size of each hidden layer in the decoder; if there is only one hidden decoder layer, this will be a numeric value
     """
-    encoder_layers_size
-    decoder_layers_size
     # Specify the model config
-    data_dimensions=data.shape[1] # No.dimensions in the data
+    data_dimensions=data_train.shape[1] # No.dimensions in the data
     encoder_hidden_layers = AnomalyData.encoder_hidden_layers
     decoder_hidden_layers = AnomalyData.decoder_hidden_layers
     # Extract the saved autoencoder model
@@ -1575,7 +1571,7 @@ def encode_and_viz_corr_autoencoder(AnomalyData, data,labels):
     This function encode the data and vizualize the correlation after encoding via Deep Autoencoder
     """   
     # Specify the model config
-    data_dimensions=data.shape[1] # No.dimensions in the data
+    data_dimensions=data_train.shape[1] # No.dimensions in the data
     encoder_hidden_layers = AnomalyData.encoder_hidden_layers
     decoder_hidden_layers = AnomalyData.decoder_hidden_layers
     # Extract the saved autoencoder model
