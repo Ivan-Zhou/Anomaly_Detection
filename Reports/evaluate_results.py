@@ -1,10 +1,28 @@
-from AnomalyDataClass import * # Functions to extract parameters of each data files 
+import os, os.path
+import scipy.sparse
+os.chdir('../')
+from AnomalyDataClass import * # Functions to extract parameters of each data files
 from support_functions import *
 
 # Set up the test running
-read_funcs = [read_mnist_data,get_yale_faces_data,read_synthetic_data,read_synthetic_data,read_synthetic_data,read_synthetic_data]
-parameters = ['','','Synthetic/','Synthetic_2/','Synthetic_3/','Synthetic_4/']
-detect_funcs = [detection_with_pca_reconstruction_error,detection_with_pca_gaussian,detection_with_autoencoder_reconstruction_error,detection_with_autoencoder_gaussian]
+read_funcs = [read_mnist_data,
+              get_yale_faces_data,
+              read_synthetic_data,
+              read_synthetic_data,
+              read_synthetic_data,
+              read_synthetic_data
+            ]
+parameters = ['',
+              '',
+              'Synthetic/',
+              'Synthetic_2/',
+              'Synthetic_3/',
+              'Synthetic_4/'
+            ]
+detect_funcs = [detection_with_pca_reconstruction_error,
+                detection_with_pca_gaussian,
+                detection_with_autoencoder_reconstruction_error,
+                detection_with_autoencoder_gaussian]
 
 n_runs = 10 # Run multiple times and take an average to get a stable result
 
@@ -28,5 +46,5 @@ for run in range(n_runs): # Run multiple times and get the results
         counter+=1 # Add 1
 
 # Save the data and labels
-np.save('evaluation_results.npy',results)
+np.save('evaluation_results.npy', results)
 print('Results have been saved!')

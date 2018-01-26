@@ -1379,7 +1379,7 @@ def train_autoencoder(AnomalyData, data, labels,epochs_size = 80, batch_size = 2
     labels is a vector of length n
     """
     # Specify the model config
-    data_dimensions=data_train.shape[1] # No.dimensions in the data
+    data_dimensions=data.shape[1] # No.dimensions in the data
     encoder_hidden_layers = AnomalyData.encoder_hidden_layers
     decoder_hidden_layers = AnomalyData.decoder_hidden_layers
     # Extract the saved autoencoder model
@@ -1420,14 +1420,11 @@ def compile_autoencoder(data_length, encoder_hidden_layers,decoder_hidden_layers
     # Set up the input placeholder
     inputs = Input(shape=(data_length,))
 
-    # Find the number of layers in the encoder and decoder
-    n_decoder_layers = len(encoder_hidden_layers)
-
     # "encoded" is the encoded representation of the input
-    encoded = create_hidden_layers(encoder_hidden_layers,inputs,dropout = dropout)
+    encoded = create_hidden_layers(encoder_hidden_layers, inputs,dropout = dropout)
     
     # "decoded" is the lossy reconstruction of the input
-    decoded = create_hidden_layers(decoder_hidden_layers,encoded,dropout = dropout)
+    decoded = create_hidden_layers(decoder_hidden_layers, encoded,dropout = dropout)
 
     # The last output layer: same size as the input
     if dropout>0:

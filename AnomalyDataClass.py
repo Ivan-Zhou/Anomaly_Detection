@@ -35,7 +35,7 @@ def set_mnist():
     Function to configure MNIST datasets
     """
     data_name = 'MNIST'
-    folder_path = 'MNIST_copy/'
+    folder_path = 'MNIST/'
     data_path = 'data/'
     n_components = 200
     encoder_hidden_layers = np.array([512,256,128, 64])
@@ -43,7 +43,8 @@ def set_mnist():
     is_image_data = True
     img_height = 32
     img_width = 32
-    mnist = AnomalyData(data_name,folder_path,data_path,n_components,encoder_hidden_layers, decoder_hidden_layers, is_image_data=is_image_data, img_height=img_height, img_width = img_width)
+    mnist = AnomalyData(data_name,folder_path,data_path,n_components,encoder_hidden_layers, decoder_hidden_layers,
+                        is_image_data=is_image_data, img_height=img_height, img_width=img_width)
     return mnist
 
 def set_faces():
@@ -59,7 +60,8 @@ def set_faces():
     is_image_data = True
     k = 10
     replicate_for_training = 300
-    faces = AnomalyData(data_name,folder_path,data_path,n_components,encoder_hidden_layers, decoder_hidden_layers,is_image_data=is_image_data,k=k,n_layers=n_layers,replicate_for_training=replicate_for_training,multiplier=multiplier)
+    faces = AnomalyData(data_name,folder_path,data_path,n_components,encoder_hidden_layers, decoder_hidden_layers,
+                        is_image_data=is_image_data, k=k, replicate_for_training=replicate_for_training)
     return faces
 
 def set_synthetic(folder_path):
@@ -69,5 +71,6 @@ def set_synthetic(folder_path):
     encoder_hidden_layers = np.array([13,11,9]) # input dimension is 16
     decoder_hidden_layers = np.array([9,11,13])
     is_image_data = False
-    synthetic = AnomalyData(data_name,folder_path,data_path,n_components, encoder_hidden_layers, decoder_hidden_layers,is_image_data=is_image_data,n_layers=n_layers,multiplier=multiplier)
+    synthetic = AnomalyData(data_name,folder_path,data_path,n_components, encoder_hidden_layers, decoder_hidden_layers,
+                            is_image_data=is_image_data)
     return synthetic

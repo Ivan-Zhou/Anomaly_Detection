@@ -19,7 +19,7 @@ def read_and_train(read_func,parm=''):
         labels = np.tile(labels, AnomalyData.replicate_for_training)
 
     #Train the model
-    autoencoder,encoder = train_autoencoder(AnomalyData,data, labels,save_model = True)
+    autoencoder, encoder = train_autoencoder(AnomalyData, data, labels,save_model = True)
 
     # Delete the data to release the space
     del data
